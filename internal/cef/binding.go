@@ -51,7 +51,7 @@ type (
 	// BindingCall describes one call of a binding from page JavaScript, as the
 	// browser process sees it when the call arrives.
 	BindingCall struct {
-		// Path is the binding's path, e.g. "mde.getPieces".
+		// Path is the binding's path, e.g. "app.getItems".
 		Path string
 
 		// FrameURL is the address the calling frame shows. nil when it does not

@@ -83,7 +83,7 @@ func TestNullArgumentBecomesTheZeroValueOfTheParameter(t *testing.T) {
 	}
 }
 
-// The whole path for mde.openDrawing(" A ", "", "A", "B"): every argument
+// The whole path for app.open(" A ", "", "A", "B"): every argument
 // reaches the variadic function, the empty one included.
 func TestEmptyStringReachesAVariadicFunction(t *testing.T) {
 	var got []string

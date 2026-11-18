@@ -18,10 +18,10 @@ func mustURL(t *testing.T, raw string) *url.URL {
 
 func TestNewBindingFuncAcceptsSupportedShapes(t *testing.T) {
 	cases := map[string]any{
-		"mde.a": func() {},
-		"mde.b": func() error { return nil },
-		"mde.c": func() string { return "" },
-		"mde.d": func(float64) (int, error) { return 0, nil },
+		"app.a": func() {},
+		"app.b": func() error { return nil },
+		"app.c": func() string { return "" },
+		"app.d": func(float64) (int, error) { return 0, nil },
 	}
 	for path, fn := range cases {
 		if _, err := newBindingFunc(path, fn); err != nil {
@@ -36,13 +36,13 @@ func TestNewBindingFuncRejectsBadInput(t *testing.T) {
 		path string
 		fn   any
 	}{
-		{"path without dot", "mde", func() {}},
+		{"path without dot", "app", func() {}},
 		{"path with two dots", "a.b.c", func() {}},
 		{"empty root", ".x", func() {}},
-		{"not a function", "mde.x", 42},
-		{"nil function", "mde.x", (func())(nil)},
-		{"three results", "mde.x", func() (int, int, error) { return 0, 0, nil }},
-		{"second result not error", "mde.x", func() (int, string) { return 0, "" }},
+		{"not a function", "app.x", 42},
+		{"nil function", "app.x", (func())(nil)},
+		{"three results", "app.x", func() (int, int, error) { return 0, 0, nil }},
+		{"second result not error", "app.x", func() (int, string) { return 0, "" }},
 	}
 	for _, c := range cases {
 		if _, err := newBindingFunc(c.path, c.fn); err == nil {
@@ -53,9 +53,9 @@ func TestNewBindingFuncRejectsBadInput(t *testing.T) {
 
 func TestWithBindingReportsDuplicatesAndBadSignatures(t *testing.T) {
 	app := &cefApp{}
-	WithBinding("mde.ping", func() string { return "pong" })(app)
-	WithBinding("mde.ping", func() string { return "pong" })(app)
-	WithBinding("mde.bad", func() (int, int) { return 0, 0 })(app)
+	WithBinding("app.ping", func() string { return "pong" })(app)
+	WithBinding("app.ping", func() string { return "pong" })(app)
+	WithBinding("app.bad", func() (int, int) { return 0, 0 })(app)
 
 	if len(app.options.bindings) != 1 {
 		t.Errorf("bindings: %d, want 1", len(app.options.bindings))
@@ -66,7 +66,7 @@ func TestWithBindingReportsDuplicatesAndBadSignatures(t *testing.T) {
 }
 
 func TestInvokeConvertsArgumentsAndResults(t *testing.T) {
-	add, err := newBindingFunc("mde.add", func(a, b float64) (float64, error) { return a + b, nil })
+	add, err := newBindingFunc("app.add", func(a, b float64) (float64, error) { return a + b, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestInvokeConvertsArgumentsAndResults(t *testing.T) {
 }
 
 func TestInvokeVariadicTakesSurplusArguments(t *testing.T) {
-	join, err := newBindingFunc("mde.join", func(sep string, parts ...string) string {
+	join, err := newBindingFunc("app.join", func(sep string, parts ...string) string {
 		return sep + strings.Join(parts, sep)
 	})
 	if err != nil {
@@ -115,12 +115,12 @@ func TestInvokeVariadicTakesSurplusArguments(t *testing.T) {
 }
 
 func TestInvokeReturnsErrorsAndRecoversPanics(t *testing.T) {
-	fail, _ := newBindingFunc("mde.fail", func() error { return errors.New("boom") })
+	fail, _ := newBindingFunc("app.fail", func() error { return errors.New("boom") })
 	if _, err := fail.invoke(nil); err == nil || err.Error() != "boom" {
 		t.Errorf("fail: %v, want boom", err)
 	}
 
-	boom, _ := newBindingFunc("mde.boom", func() string { panic("kaputt") })
+	boom, _ := newBindingFunc("app.boom", func() string { panic("kaputt") })
 	if _, err := boom.invoke(nil); err == nil {
 		t.Error("panic must become an error")
 	}
