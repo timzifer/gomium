@@ -31,6 +31,11 @@ import (
 //   - A call from page JavaScript sends a request to the browser process. The
 //     BindingGuard of the calling browser decides whether it may run. The
 //     result returns to the renderer, which settles the promise of the call.
+//   - Guard and function run on a goroutine of their own, never on a CEF
+//     thread: a slow function must not stall the browser UI thread, and one
+//     that itself waits for the UI thread (CookieManager, DevTools Call,
+//     PrintToPdf) would otherwise deadlock until its timeout. Calls therefore
+//     run concurrently - a bound function must be safe for that.
 //
 // Argument and result values travel as *Exported, the same wire form that
 // JavaScript evaluation uses.
@@ -59,7 +64,10 @@ type (
 
 	// BindingGuard decides whether a binding call may run. false rejects it:
 	// the function is not executed and the promise in the page is rejected.
-	// The guard runs off the CEF threads.
+	// The guard runs off the CEF threads, on the goroutine of the call, and
+	// may be called concurrently. FrameURL and MainFrame are taken when the
+	// call arrives, so a navigation in between does not change what the
+	// guard sees.
 	BindingGuard func(call BindingCall) bool
 
 	bindingFunc struct {
@@ -120,14 +128,16 @@ func (e bindingCallResponse) DispatchWith(dispatcher Dispatcher, target CefProce
 	return dispatchGobPayload(processMessageBindingCallResponse, e, dispatcher, target)
 }
 
-// WithBinding exposes fn to page JavaScript at path, e.g. "mde.getPieces".
+// WithBinding exposes fn to page JavaScript at path, e.g. "app.getItems".
 //
 // fn has at most one result besides an error: func(...) error, func(...) T or
 // func(...) (T, error). A variadic fn takes the page's surplus arguments as
-// its last parameter, so mde.openDrawing("A", "B") reaches
-// func(numbers ...string). Arguments arrive converted from JavaScript values
+// its last parameter, so app.open("A", "B") reaches func(names ...string). Arguments arrive converted from JavaScript values
 // (numbers as float64, objects as map[string]any, arrays as []any, null as the
 // zero value). The result is returned to the page as a promise value.
+//
+// fn runs on a goroutine of its own, never on a CEF thread, and calls from
+// the page may run concurrently.
 //
 // A bad path or signature is reported by New.
 func WithBinding(path string, fn any) Option {
@@ -447,16 +457,13 @@ func exportArguments(argc int64, argv unsafe.Pointer) ([]*Exported, error) {
 
 // handleBindingCallRequest runs in the browser process. It applies the guard
 // of the client, runs the function and answers to the renderer that asked.
+// handleBindingCallRequest runs in the browser process, on the UI thread
+// inside on_process_message_received. It takes only what has to be read
+// there - the frame as it is now - and hands guard, function and answer to a
+// goroutine.
 func handleBindingCallRequest(c *client, request *bindingCallRequest, frame cefFrame) {
-	response := bindingCallResponse{Id: request.Id}
-	defer func() {
-		_, _ = response.DispatchWith(frame, PidRenderer)
-	}()
-
 	app := getInstance()
-	entry, ok := bindingByPath(app, request.Path)
-	if !ok {
-		response.Error = "unknown binding " + request.Path
+	if app == nil {
 		return
 	}
 
@@ -464,6 +471,30 @@ func handleBindingCallRequest(c *client, request *bindingCallRequest, frame cefF
 	if parsed, err := url.Parse(frame.url()); err == nil {
 		call.FrameURL = parsed
 	}
+
+	// The caller releases its frame reference when the callback returns; the
+	// goroutine answers through this one.
+	addRefBase(unsafe.Pointer(frame.cStruct))
+	go func() {
+		response := runBindingCall(app, c, request, call)
+		app.withCEF(func() {
+			_, _ = response.DispatchWith(frame, PidRenderer)
+			frame.Release()
+		})
+	}()
+}
+
+// runBindingCall checks the guard and runs the function. It never touches
+// CEF, so it is free to block.
+func runBindingCall(app *cefApp, c *client, request *bindingCallRequest, call BindingCall) (response bindingCallResponse) {
+	response.Id = request.Id
+
+	entry, ok := bindingByPath(app, request.Path)
+	if !ok {
+		response.Error = "unknown binding " + request.Path
+		return
+	}
+
 	guard := bindingGuardFor(app, c)
 	if guard == nil || !guard(call) {
 		if c != nil {
@@ -484,6 +515,7 @@ func handleBindingCallRequest(c *client, request *bindingCallRequest, frame cefF
 		return
 	}
 	response.Result = exported
+	return
 }
 
 // originOf names only the origin of a URL for log lines: paths and queries can

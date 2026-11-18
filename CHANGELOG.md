@@ -12,6 +12,19 @@ fetched — they are listed for the record of what changed when.
 
 ## [Unreleased]
 
+### Changed
+
+- Binding guards and bound functions run on a goroutine of their own instead of the
+  browser UI thread, and calls from the page may run concurrently — a bound function
+  must be safe for that. `BindingCall.FrameURL` and `MainFrame` are still taken when
+  the call arrives.
+
+### Fixed
+
+- A bound function that waits for the UI thread itself (cookie manager, DevTools
+  `Call`, `PrintToPdf`) no longer blocks until its timeout, and a slow one no longer
+  freezes every browser while it runs.
+
 ## [0.5.0] - 2026-11-18
 
 ### Added
