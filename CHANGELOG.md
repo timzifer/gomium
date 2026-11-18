@@ -1,0 +1,177 @@
+# Changelog
+
+All notable changes to gomium are documented here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html) — while gomium is at `v0.x`,
+a minor version may break the API, and so, in the past, did one patch version
+(see 0.2.2).
+
+0.5.0 is the first public release. The versions below it were tagged in the private
+repository gomium grew up in; their tags were not carried over, so they cannot be
+fetched — they are listed for the record of what changed when.
+
+## [Unreleased]
+
+## [0.5.0] - 2026-11-18
+
+### Added
+
+- `LICENSE` (BSD 3-Clause) and `THIRD_PARTY_NOTICES.md`.
+- `examples/osr` and `examples/window`: minimal, copyable hosts with the external
+  message pump.
+- `cefdl` unpacks the distribution's license notices next to the runtime:
+  `CEF_LICENSE.txt` and `CREDITS.html` (Chromium and its third-party components). Both
+  must ship with an application; `tools/cefbundle` copies them into
+  `Contents/Resources/`. An existing runtime directory gets them with `cefdl -force`.
+
+### Changed
+
+- `docs/api.md` is in English now, like the rest of the documentation.
+- The manual test harness moved from `cmd/main` to `cmd/harness`, with its scenarios
+  documented in `cmd/harness/README.md`.
+- **Breaking for the CEF upgrade workflow:** the pinned CEF version moved from
+  `cef.version` in the repository root to `cefdl/cef.version`. It is embedded into the
+  `cefdl` package and available as `cefdl.PinnedVersion()`.
+
+### Fixed
+
+- `go run github.com/timzifer/gomium/tools/cefdl` works from a module that depends on
+  gomium; it no longer reads `./cef.version` from the working directory.
+- Reference counting and memory safety:
+  - a UI-thread call that timed out (`ZoomLevel`, `IsAudioMuted`,
+    `ExecuteDevToolsMethod`, DevTools `Call`) no longer runs later on memory its
+    caller had already freed;
+  - binding calls no longer leak the JavaScript `this` value and every argument;
+    binding results that are maps no longer leak their children;
+  - `Equals` on `CefBrowser`, `V8Context` and `CefTaskRunner` (and the value
+    wrappers) no longer releases the argument once too often;
+  - a request handler that keeps the `OnBeforeResourceLoad` callback but answers
+    synchronously no longer reaches a released callback, and one that called
+    `Continue` before returning no longer releases it twice;
+  - `Browser.Close` holds its own reference while it closes;
+  - a failed custom-scheme registration or `ObjectValue.SetValueForKey` no longer
+    releases its argument twice; a process message to a browser without a main frame
+    is released instead of leaked.
+
+## Pre-public history
+
+### 0.4.3 - 2026-11-18
+
+#### Fixed
+
+- With an external message pump, blocking calls made on the UI thread (`NewBrowser`,
+  `Client.Close`, cookie access, `PrintToPdf`, DevTools `Call`) pump the message loop
+  themselves instead of waiting for a callback only that thread could deliver.
+  `NewBrowser` no longer runs into its 5 s timeout in a Fyne host.
+
+### 0.4.2 - 2026-11-18
+
+#### Fixed
+
+- External message pump (`WithMessagePumpWorker`) on Windows drains the Win32 message
+  queue of the `cef_initialize` thread. Windowed browsers no longer go "not responding"
+  and close cleanly; offscreen hosts service Chromium's hidden windows.
+- The pump honours `delay_ms` of `OnScheduleMessagePumpWork` and pumps at least every
+  1000/30 ms (was 250 ms), as cefclient does.
+- Workers queued by the host before `Run` finished or after `Close` began are no-ops;
+  reentrant pumping is detected and rescheduled.
+
+#### Changed
+
+- Default of `WithMessagePumpWorkerInterval` is 1000/30 ms. Workers and `Close` must run
+  on the thread that called `cef_initialize`.
+
+### 0.4.1 - 2026-11-12
+
+#### Added
+
+- Test harness: DevTools probe that crashes the renderer, popup dialog test page for
+  bindings in popups. No library changes.
+
+### 0.4.0 - 2026-11-12
+
+#### Added
+
+- In-process DevTools protocol per browser (`WithDevTools`): method calls, events and
+  attach, without a remote debugging port.
+
+#### Removed
+
+- **Breaking:** the raw CEF value helpers left the public API — `NewValue`, `FreeValue`,
+  `NewListValue`, `FreeListValue`, `BinaryValueFromBuffer` and the `CefValue`,
+  `CefListValue`, `CefBinaryValue` types.
+
+### 0.3.1 - 2026-11-11
+
+#### Changed
+
+- `WithBinding` accepts variadic Go functions; surplus JavaScript arguments arrive as the
+  final slice parameter.
+
+### 0.3.0 - 2026-11-11
+
+#### Added
+
+- `WithBinding(path, fn)`: Go functions exposed to page JavaScript per frame, returning
+  promises. Signatures are checked when the binding is created.
+- `WithBindingGuard` and `WithDefaultBindingGuard`: every binding call is checked
+  against its frame; without a guard, calls are rejected. `SameOrigin` guard helper.
+- `WithPopupView`: allowed popups render offscreen with a client of their own instead of
+  opening a native window.
+
+### 0.2.2 - 2026-11-11
+
+#### Added
+
+- Optional handler escape hatches: focus, keyboard, file dialog, frames, auth, popups and
+  screen info.
+- Migration guide CEF 151.3.14 → 156.0.27 (`docs/migration-151-to-156.md`).
+
+#### Changed
+
+- CEF 156.0.27 is the target and the minimum version; the API version is pinned to 15600.
+
+#### Fixed
+
+- HTTP auth challenges reach the client's `AuthHandler` instead of Chrome's own login
+  prompt. Without an auth handler the request is cancelled.
+
+#### Removed
+
+- **Breaking:** the extension API (`CefRegisterExtension`, deprecated since CEF 154):
+  `WithExtension`, `Extension`, `WithExtensionCallGuard`,
+  `WithDefaultExtensionCallGuard`, `DenyExtensionCalls`, `SameOrigin`. Bindings
+  (0.3.0) replace it.
+
+### 0.2.1 - 2026-11-10
+
+#### Fixed
+
+- `""`, `0` and `false` survive the trip between renderer and browser process in
+  extension calls instead of arriving as `null`.
+
+### 0.2.0 - 2026-11-09
+
+#### Added
+
+- Guards for extension calls: `ExtensionCall`, `ExtensionCallGuard`,
+  `WithExtensionCallGuard`, `WithDefaultExtensionCallGuard`, `DenyExtensionCalls`,
+  `SameOrigin`.
+
+### 0.1.0 - 2026-09-14
+
+First tagged release.
+
+#### Added
+
+- Go bindings on the CEF C API, bound at runtime (`LoadLibcef`) — no link-time dependency
+  on libcef.
+- Offscreen rendering and native windows (`WithWindow`) on Windows and macOS, with
+  native file-drop paths.
+- CEF 151, macOS/arm64 support (arm64 trampolines, `dlopen` loader, AppKit pump, `.app`
+  bundling via `tools/cefbundle`).
+- Custom schemes (`WithCustomScheme`), runtime download of the CEF distribution
+  (`FetchRuntime`, package `cefdl`, `tools/cefdl`).
+- CI on Ubuntu, Windows and macOS.
+
+[0.5.0]: https://github.com/timzifer/gomium/releases/tag/v0.5.0

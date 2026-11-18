@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>gomium feature test page</title>
+<style>
+:root{--bg:#fff;--fg:#1b1b1f;--mut:#5f5f69;--card:#f4f4f7;--bd:#d6d6de;--acc:#2563eb;--pass:#15803d;--fail:#b91c1c;--man:#b45309;--skip:#6b7280;--none:#9ca3af;--code:#eaeaf0}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#121216;--fg:#e8e8ee;--mut:#9d9daa;--card:#1d1d24;--bd:#35353f;--acc:#60a5fa;--code:#26262f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0}
+.top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.sum{font-family:monospace;color:var(--mut);word-break:break-all;font-size:13px}
+.ua{font-family:monospace;color:var(--mut);font-size:12px;word-break:break-all}
+.t{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:12px 14px;margin:12px 0}
+.t header{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.t h2{font-size:16px;margin:0;flex:1 1 auto;word-break:break-word}
+.t p{margin:6px 0;color:var(--mut)}
+.steps{color:var(--fg)!important}
+.steps::before{content:"Manual: ";font-weight:700;color:var(--man)}
+.result,.out{font-family:monospace;font-size:13px;margin-top:8px;word-break:break-word;white-space:pre-wrap}
+button{font:inherit;padding:6px 12px;border-radius:6px;border:1px solid var(--bd);background:var(--bg);color:var(--fg);cursor:pointer}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+input,textarea,select{font:inherit;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--fg);max-width:100%}
+input[type=text],textarea,select{width:100%}
+textarea{min-height:70px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+.row input[type=text]{flex:1 1 220px}
+pre{background:var(--code);padding:8px;border-radius:6px;font-size:12px;max-height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0}
+.badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700;color:#fff;background:var(--none)}
+.b-PASS{background:var(--pass)}.b-FAIL{background:var(--fail)}.b-MANUAL{background:var(--man)}.b-SKIP{background:var(--skip)}
+.cur{display:inline-block;width:150px;max-width:100%;padding:18px 8px;margin:4px;border:1px dashed var(--bd);border-radius:6px;text-align:center;background:var(--bg)}
+.cur-pointer{cursor:pointer}.cur-text{cursor:text}.cur-grab{cursor:grab}.cur-na{cursor:not-allowed}.cur-wait{cursor:wait}.cur-cross{cursor:crosshair}
+iframe{width:100%;max-width:100%;height:70px;border:1px solid var(--bd);border-radius:6px;background:var(--bg)}
+.fr2{height:50px}
+.hid{display:none}
+a{color:var(--acc);word-break:break-all}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>gomium CEF feature test page</h1>
+<div class="top">
+  <button class="pri" id="runall">auto: Run all</button>
+  <button id="sumbtn">Summary</button>
+  <span class="sum" id="summary">SUMMARY not run</span>
+</div>
+<p class="ua" id="ua"></p>
+<p>Run = auto check where one exists, otherwise a MANUAL marker. "Run all" never opens dialogs, print, popups or file pickers.</p>
+
+<section class="t" id="t-select-popup">
+  <header><h2>1. select-popup</h2><span class="badge b-NOT">NOT RUN</span><button data-run="select-popup">Run</button></header>
+  <p>Auto: sets value via JS and dispatches change; the label must update.</p>
+  <select id="sel">
+    <optgroup label="Group A">
+      <option value="opt-1">Item 1</option>
+      <option value="opt-2">Item 2</option>
+      <option value="opt-3">Item 3</option>
+      <option value="opt-4">Item 4</option>
+      <option value="opt-5">Item 5</option>
+      <option value="opt-6">Item 6</option>
+    </optgroup>
+    <optgroup label="Group B">
+      <option value="opt-x" disabled>Item X (disabled)</option>
+      <option value="opt-7">Item 7</option>
+      <option value="opt-8">Item 8</option>
+      <option value="opt-9">Item 9</option>
+      <option value="opt-10">Item 10</option>
+      <option value="opt-11">Item 11</option>
+      <option value="opt-12">Item 12</option>
+    </optgroup>
+  </select>
+  <div class="out" id="sel-out">Selected: (none)</div>
+  <p class="steps">open the dropdown with the mouse and pick an item; the label above must change. The disabled item must not be selectable.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-file-input">
+  <header><h2>2. file-input</h2><span class="badge b-NOT">NOT RUN</span><button data-run="file-input">Run</button></header>
+  <input type="file" id="file" multiple accept="image/*,.txt">
+  <div class="out" id="file-out">no files</div>
+  <p class="steps">pick several image or .txt files with the input; the file names and count must appear here and a MANUAL line with the count is logged.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-keyboard">
+  <header><h2>3. keyboard</h2><span class="badge b-NOT">NOT RUN</span><button data-run="keyboard">Run</button></header>
+  <p>Logs every keydown, keyup and keypress on the document (last 20).</p>
+  <input type="text" id="kb" placeholder="type here">
+  <pre id="kb-log">(no events yet)</pre>
+  <p class="steps">focus the input; press Ctrl+F, Ctrl+A, F12, Tab, arrow keys; type ä and €. Each press must appear in the log with key, code, ctrl and shift.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-focus">
+  <header><h2>4. focus</h2><span class="badge b-NOT">NOT RUN</span><button data-run="focus">Run</button></header>
+  <p>Auto: focuses input A and checks document.activeElement. Focus and blur are logged with timestamps.</p>
+  <div class="row"><input type="text" id="fa" placeholder="input A"><input type="text" id="fb" placeholder="input B"></div>
+  <pre id="focus-log">(no focus events yet)</pre>
+  <p class="steps">Tab between A and B, click outside the page and come back; focus and blur lines (including window focus/blur) must appear.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-frames">
+  <header><h2>5. frames</h2><span class="badge b-NOT">NOT RUN</span><button data-run="frames">Run</button></header>
+  <p>Auto: reads the body text of the srcdoc iframe (same origin); expects "child".</p>
+  <iframe id="frame1" srcdoc="<p>child</p>" title="srcdoc child"></iframe>
+  <iframe id="frame2" class="fr2" src="about:blank" title="about blank"></iframe>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-screen-info">
+  <header><h2>6. screen-info</h2><span class="badge b-NOT">NOT RUN</span><button data-run="screen-info">Run</button><button id="mm-btn">log matchMedia 2dppx</button></header>
+  <p>Auto: PASS if devicePixelRatio and innerWidth are greater than 0.</p>
+  <div class="out" id="screen-out">not run yet</div>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-cursor">
+  <header><h2>7. cursor</h2><span class="badge b-NOT">NOT RUN</span><button data-run="cursor">Run</button></header>
+  <div>
+    <div class="cur cur-pointer">pointer</div>
+    <div class="cur cur-text">text</div>
+    <div class="cur cur-grab">grab</div>
+    <div class="cur cur-na">not-allowed</div>
+    <div class="cur cur-wait">wait</div>
+    <div class="cur cur-cross">crosshair</div>
+  </div>
+  <p class="steps">hover each box; the cursor shape must match its label.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-popup-window">
+  <header><h2>8. popup-window</h2><span class="badge b-NOT">NOT RUN</span><button data-run="popup-window">Run</button></header>
+  <p>The button calls window.open('about:blank','_blank') on click (user gesture). The host may route the popup into the opener.</p>
+  <button id="pop-btn">window.open about:blank</button>
+  <p class="steps">click the button; observe whether a popup opens, is suppressed or is routed into this window. Close any popup you get.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-popup-dialog">
+  <header><h2>8b. popup-dialog (binding popup)</h2><span class="badge b-NOT">NOT RUN</span><button data-run="popup-dialog">Run</button></header>
+  <p>The link opens this page again with ?popup in a new window (target="_blank", user gesture). The popup shows POPUP VISIBLE in large text and calls mde.ping, if the host bound it. The host should show the popup offscreen, e.g. in a dialog, instead of a native window.</p>
+  <p><a id="popup-link" href="?popup" target="_blank">open popup page (?popup)</a></p>
+  <p class="steps">click the link; a popup with POPUP VISIBLE must appear inside the host (dialog), not as a separate window. Close it with the host's close control; the popup must go away with it. Log lines: BINDING_POPUP_RESULT / BINDING_POPUP_ERR (popup), BINDING_MAIN_RESULT / BINDING_MAIN_ERR (opener).</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-download">
+  <header><h2>9. download</h2><span class="badge b-NOT">NOT RUN</span><button data-run="download">Run</button></header>
+  <p><a id="dl" href="data:text/plain;charset=utf-8,gomium-download-test" download="gomium-test.txt">download gomium-test.txt</a></p>
+  <p class="steps">click the link; the download must start as gomium-test.txt with content gomium-download-test.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-js-dialogs">
+  <header><h2>10. js-dialogs</h2><span class="badge b-NOT">NOT RUN</span><button data-run="js-dialogs">Run</button></header>
+  <p>Dialogs only open from their own buttons, never automatically.</p>
+  <div class="row">
+    <button id="dlg-alert">alert()</button>
+    <button id="dlg-confirm">confirm()</button>
+    <button id="dlg-prompt">prompt()</button>
+  </div>
+  <p class="steps">click each button separately; the dialog must appear, dismiss and return. The result line logs the return value.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-beforeunload">
+  <header><h2>11. beforeunload</h2><span class="badge b-NOT">NOT RUN</span><button data-run="beforeunload">Run</button></header>
+  <label><input type="checkbox" id="bu-arm"> arm beforeunload</label>
+  <p class="steps">tick the checkbox, then navigate away or reload; a leave-site dialog must appear. Untick to disarm.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-context-menu">
+  <header><h2>12. context-menu</h2><span class="badge b-NOT">NOT RUN</span><button data-run="context-menu">Run</button></header>
+  <div class="out" id="ctx">right click me</div>
+  <p><a href="#ctx-link" id="ctx-link">context link</a></p>
+  <div class="out">contextmenu events seen by JS: <span id="ctx-n">0</span></div>
+  <p class="steps">right-click the text and the link; the native context menu must appear. The counter counts contextmenu events seen by the page.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-find">
+  <header><h2>13. find</h2><span class="badge b-NOT">NOT RUN</span><button data-run="find">Run</button></header>
+  <p id="find-text">The gomium browser embeds CEF in Go. Offscreen rendering is handled by the wrapper. Each gomium page exercises one feature. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore. This sentence contains the word gomium as well. Expected find matches for the word gomium are five. End of text: gomium.</p>
+  <p class="steps">press Ctrl+F and search for gomium; the browser match count must be 5.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-load-error">
+  <header><h2>14. load-error</h2><span class="badge b-NOT">NOT RUN</span><button data-run="load-error">Run</button></header>
+  <button id="le-btn">navigate hidden iframe to 127.0.0.1:1</button>
+  <iframe id="err-frame" class="hid" title="load error frame"></iframe>
+  <p class="steps">click the button; a connection-refused load error (or OnLoadError in the host log) is expected. Only loopback port 1 is used.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-basic-auth">
+  <header><h2>15. basic-auth</h2><span class="badge b-NOT">NOT RUN</span><button data-run="basic-auth">Run</button></header>
+  <button id="auth-btn">fetch /auth-test</button>
+  <p class="steps">only works when the host serves /auth-test. With a 401 and WWW-Authenticate the host should show an auth prompt; the result line shows the HTTP status.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-permissions">
+  <header><h2>16. permissions</h2><span class="badge b-NOT">NOT RUN</span><button data-run="permissions">Run</button></header>
+  <div class="row">
+    <button id="perm-cam">getUserMedia video</button>
+    <button id="perm-notif">Notification.requestPermission</button>
+    <button id="perm-geo">geolocation</button>
+  </div>
+  <p class="steps">press each button, accept or deny each prompt; the outcome line accumulates the results.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-print">
+  <header><h2>17. print</h2><span class="badge b-NOT">NOT RUN</span><button data-run="print">Run</button></header>
+  <button id="print-btn">window.print()</button>
+  <p class="steps">click the button; the print flow must open and close without hanging the page.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-audio">
+  <header><h2>18. audio</h2><span class="badge b-NOT">NOT RUN</span><button data-run="audio">Run</button></header>
+  <audio id="aud" controls></audio>
+  <p class="steps">press play; a generated 0.5 s silent WAV plays (no audible sound expected). The host should see an audio stream start. An element error is reported as FAIL.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-clipboard-text">
+  <header><h2>19. clipboard-text</h2><span class="badge b-NOT">NOT RUN</span><button data-run="clipboard-text">Run</button></header>
+  <input type="text" id="clip-in" value="gomium clipboard text äöü">
+  <button id="clip-btn">copy selection</button>
+  <p class="steps">after the copy, paste into another app; the text must arrive. The result line shows the execCommand return value.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-ime">
+  <header><h2>20. ime / non-ascii</h2><span class="badge b-NOT">NOT RUN</span><button data-run="ime">Run</button></header>
+  <textarea id="ime" placeholder="日本語 ä ö ü € 😀"></textarea>
+  <p class="steps">compose text with an IME (for example Japanese); type ä ö ü €; the characters must appear unchanged and composition must work.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-storage">
+  <header><h2>21. storage</h2><span class="badge b-NOT">NOT RUN</span><button data-run="storage">Run</button></header>
+  <p>Auto: localStorage and cookie set/get round-trip.</p>
+  <div class="result"></div>
+</section>
+
+<section class="t" id="t-messaging">
+  <header><h2>22. messaging</h2><span class="badge b-NOT">NOT RUN</span><button data-run="messaging">Run</button></header>
+  <p>Auto: postMessage to self must be received within 100 ms.</p>
+  <div class="result"></div>
+</section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var ORDER = ['select-popup','file-input','keyboard','focus','frames','screen-info','cursor','popup-window','popup-dialog','download','js-dialogs','beforeunload','context-menu','find','load-error','basic-auth','permissions','print','audio','clipboard-text','ime','storage','messaging'];
+  var FNS = {};
+  var STATE = {};
+
+  function ts() { return new Date().toISOString().slice(11, 23); }
+  function clean(s) { return String(s).replace(/\s+/g, ' '); }
+  function steps(id) { var p = document.querySelector('#t-' + id + ' .steps'); return p ? p.textContent : ''; }
+  function manual(id, extra) {
+    var s = steps(id);
+    return (extra ? extra + ' | ' : '') + (s ? 'STEPS: ' + s : '');
+  }
+  function setStatus(id, status, detail) {
+    STATE[id] = status;
+    var sec = $('t-' + id);
+    var b = sec.querySelector('.badge');
+    b.textContent = status;
+    b.className = 'badge b-' + status;
+    sec.querySelector('.result').textContent = clean(detail);
+    console.log('[GOMIUM-TEST] ' + id + ' ' + status + ' ' + clean(detail));
+  }
+  function runTest(id) {
+    var fn = FNS[id];
+    var r;
+    try { r = fn ? fn() : { status: 'MANUAL', detail: manual(id, 'not auto-run') }; }
+    catch (e) { r = { status: 'FAIL', detail: 'exception: ' + e }; }
+    return Promise.resolve(r).then(function (res) {
+      if (res.status === 'MANUAL') res.detail = manual(id, res.detail);
+      setStatus(id, res.status, res.detail);
+    }, function (e) { setStatus(id, 'FAIL', 'rejected: ' + e); });
+  }
+  function summary() {
+    var p = 0, f = 0, m = 0;
+    ORDER.forEach(function (id) {
+      var s = STATE[id];
+      if (s === 'PASS') p++; else if (s === 'FAIL') f++; else if (s === 'MANUAL') m++;
+    });
+    var line = 'pass=' + p + ' fail=' + f + ' manual=' + m;
+    $('summary').textContent = 'SUMMARY ' + line;
+    console.log('[GOMIUM-TEST] SUMMARY ' + line);
+  }
+  function runAll() {
+    ORDER.reduce(function (prev, id) { return prev.then(function () { return runTest(id); }); }, Promise.resolve())
+      .then(summary);
+  }
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-run]') : null;
+    if (b) runTest(b.getAttribute('data-run'));
+  });
+  $('runall').addEventListener('click', runAll);
+  $('sumbtn').addEventListener('click', summary);
+  // ?auto: run the automatic tests once after load (no dialogs, popups or
+  // pickers are opened by runAll)
+  if (location.search.indexOf('auto') !== -1) {
+    window.addEventListener('load', function () { setTimeout(runAll, 500); });
+  }
+  // ?auth: also trigger the basic-auth fetch once after load (needs the host
+  // to answer the 401 challenge, e.g. via WithAuthHandler)
+  if (location.search.indexOf('auth') !== -1) {
+    window.addEventListener('load', function () { setTimeout(function () { $('auth-btn').click(); }, 1500); });
+  }
+  $('ua').textContent = 'UA: ' + navigator.userAgent + ' | ' + location.href;
+
+  // 1 select-popup
+  var sel = $('sel');
+  sel.addEventListener('change', function () {
+    $('sel-out').textContent = 'Selected: ' + sel.value + ' / ' + sel.options[sel.selectedIndex].text;
+  });
+  FNS['select-popup'] = function () {
+    sel.value = 'opt-7';
+    sel.dispatchEvent(new Event('change'));
+    var ok = $('sel-out').textContent === 'Selected: opt-7 / Item 7';
+    return { status: 'MANUAL', detail: 'auto ' + (ok ? 'PASS' : 'FAIL') + ' (JS value change updated label)' };
+  };
+
+  // 2 file-input
+  $('file').addEventListener('change', function (e) {
+    var f = Array.prototype.slice.call(e.target.files);
+    var names = f.map(function (x) { return x.name; }).join(', ');
+    $('file-out').textContent = f.length + ' file(s): ' + (names || '-');
+    setStatus('file-input', 'MANUAL', 'picked ' + f.length + ' file(s): ' + names);
+  });
+
+  // 3 keyboard
+  var kbLines = [];
+  ['keydown', 'keyup', 'keypress'].forEach(function (t) {
+    document.addEventListener(t, function (e) {
+      kbLines.push(ts() + ' ' + t + ' key=' + JSON.stringify(e.key) + ' code=' + e.code + ' ctrl=' + e.ctrlKey + ' shift=' + e.shiftKey);
+      if (kbLines.length > 20) kbLines.shift();
+      $('kb-log').textContent = kbLines.join('\n');
+    });
+  });
+
+  // 4 focus
+  var flLines = [];
+  function flLog(s) {
+    flLines.push(ts() + ' ' + s);
+    if (flLines.length > 20) flLines.shift();
+    $('focus-log').textContent = flLines.join('\n');
+  }
+  ['fa', 'fb'].forEach(function (id) {
+    ['focus', 'blur'].forEach(function (t) {
+      $(id).addEventListener(t, function () { flLog(id + ' ' + t); });
+    });
+  });
+  window.addEventListener('focus', function () { flLog('window focus'); });
+  window.addEventListener('blur', function () { flLog('window blur'); });
+  FNS.focus = function () {
+    $('fa').focus();
+    var ok = document.activeElement === $('fa');
+    return { status: ok ? 'PASS' : 'FAIL', detail: 'activeElement===A: ' + ok + ' document.hasFocus=' + document.hasFocus() };
+  };
+
+  // 5 frames
+  FNS.frames = function () {
+    var body = null, err = '';
+    try { body = $('frame1').contentDocument.body.textContent.trim(); } catch (e) { err = ' err=' + e; }
+    var ok = body === 'child';
+    return { status: ok ? 'PASS' : 'FAIL', detail: 'frame1 body="' + body + '" window.frames.length=' + window.frames.length + err };
+  };
+
+  // 6 screen-info
+  function screenInfo() {
+    var v = [['dpr', devicePixelRatio], ['innerW', innerWidth], ['innerH', innerHeight], ['screenW', screen.width], ['screenH', screen.height], ['availW', screen.availWidth], ['availH', screen.availHeight], ['colorDepth', screen.colorDepth]];
+    return { txt: v.map(function (p) { return p[0] + '=' + p[1]; }).join(' '), ok: devicePixelRatio > 0 && innerWidth > 0 };
+  }
+  FNS['screen-info'] = function () {
+    var s = screenInfo();
+    $('screen-out').textContent = s.txt;
+    return { status: s.ok ? 'PASS' : 'FAIL', detail: s.txt };
+  };
+  $('mm-btn').addEventListener('click', function () {
+    var m = matchMedia('(resolution: 2dppx)').matches;
+    $('screen-out').textContent = screenInfo().txt + ' matchMedia(2dppx)=' + m;
+    console.log('[GOMIUM-TEST] screen-info INFO matchMedia(resolution:2dppx)=' + m);
+  });
+
+  // 8 popup-window
+  $('pop-btn').addEventListener('click', function () {
+    var w = null;
+    try { w = window.open('about:blank', '_blank'); } catch (e) { /* suppressed */ }
+    setStatus('popup-window', 'MANUAL', manual('popup-window', w
+      ? 'window.open returned a WindowProxy (closed=' + w.closed + '); host may route it into the opener'
+      : 'window.open returned null (suppressed or routed by host)'));
+  });
+
+  // 8b popup-dialog: the link opens ?popup; the popup page is this page in
+  // popup mode. Binding results go to the log like in GOMIUM_BINDING_POPUP_TEST.
+  var isPopup = location.search.indexOf('popup') !== -1;
+  function pingBinding(tag) {
+    if (typeof mde === 'undefined' || !mde || typeof mde.ping !== 'function') {
+      console.log('[GOMIUM-TEST] popup-dialog ' + tag + ' mde=undefined');
+      return;
+    }
+    mde.ping().then(function (v) { console.log('BINDING_' + tag + '_RESULT ' + v); },
+      function (e) { console.log('BINDING_' + tag + '_ERR ' + e); });
+  }
+  if (isPopup) {
+    console.log('POPUP_PROBE url=' + location.href + ' mde=' + typeof mde);
+    document.body.innerHTML = '<h1 id="popup-visible" style="font-size:80px;font-family:sans-serif;margin:24px">POPUP VISIBLE</h1>';
+    pingBinding('POPUP');
+  } else {
+    FNS['popup-dialog'] = function () {
+      pingBinding('MAIN');
+      return { status: 'MANUAL', detail: 'click the popup link; the popup must open inside the host, not as a window' };
+    };
+    $('popup-link').addEventListener('click', function () {
+      setStatus('popup-dialog', 'MANUAL', manual('popup-dialog', 'popup requested (window.open via link)'));
+    });
+  }
+
+  // 10 js-dialogs
+  $('dlg-alert').addEventListener('click', function () {
+    alert('gomium alert');
+    setStatus('js-dialogs', 'MANUAL', manual('js-dialogs', 'alert() returned'));
+  });
+  $('dlg-confirm').addEventListener('click', function () {
+    var r = confirm('gomium confirm');
+    setStatus('js-dialogs', 'MANUAL', manual('js-dialogs', 'confirm() returned ' + r));
+  });
+  $('dlg-prompt').addEventListener('click', function () {
+    var r = prompt('gomium prompt', 'default');
+    setStatus('js-dialogs', 'MANUAL', manual('js-dialogs', 'prompt() returned ' + JSON.stringify(r)));
+  });
+
+  // 11 beforeunload
+  $('bu-arm').addEventListener('change', function (e) {
+    window.onbeforeunload = e.target.checked ? function (ev) {
+      var m = 'gomium unsaved changes';
+      ev.preventDefault();
+      ev.returnValue = m;
+      return m;
+    } : null;
+    setStatus('beforeunload', 'MANUAL', manual('beforeunload', 'armed=' + e.target.checked));
+  });
+
+  // 12 context-menu
+  var ctxN = 0;
+  document.addEventListener('contextmenu', function () {
+    ctxN++;
+    $('ctx-n').textContent = ctxN;
+  });
+
+  // 13 find
+  FNS.find = function () {
+    var n = $('find-text').textContent.split('gomium').length - 1;
+    return { status: 'MANUAL', detail: 'DOM contains ' + n + ' occurrences of "gomium" (expect 5)' };
+  };
+
+  // 14 load-error
+  $('le-btn').addEventListener('click', function () {
+    $('err-frame').src = 'http://127.0.0.1:1/';
+    setStatus('load-error', 'MANUAL', manual('load-error', 'navigated hidden iframe to http://127.0.0.1:1/ (connection refused expected)'));
+  });
+
+  // 15 basic-auth
+  $('auth-btn').addEventListener('click', function () {
+    fetch('/auth-test', { credentials: 'include' }).then(function (r) {
+      setStatus('basic-auth', 'MANUAL', manual('basic-auth', 'HTTP ' + r.status + ' WWW-Authenticate=' + (r.headers.get('WWW-Authenticate') || 'none')));
+    }, function (e) {
+      setStatus('basic-auth', 'MANUAL', manual('basic-auth', 'fetch error: ' + e));
+    });
+  });
+
+  // 16 permissions
+  var perm = {};
+  function permSet(k, v) {
+    perm[k] = v;
+    var line = Object.keys(perm).map(function (x) { return x + ': ' + perm[x]; }).join(' ; ');
+    setStatus('permissions', 'MANUAL', manual('permissions', line));
+  }
+  function permErr(e) { return 'rejected ' + ((e && (e.name || e.code)) || e); }
+  $('perm-cam').addEventListener('click', function () {
+    try {
+      navigator.mediaDevices.getUserMedia({ video: true }).then(function (s) {
+        s.getTracks().forEach(function (t) { t.stop(); });
+        permSet('getUserMedia', 'resolved');
+      }, function (e) { permSet('getUserMedia', permErr(e)); });
+    } catch (e) { permSet('getUserMedia', 'throw ' + e); }
+  });
+  $('perm-notif').addEventListener('click', function () {
+    try {
+      Promise.resolve(Notification.requestPermission()).then(function (p) {
+        permSet('notification', p);
+      }, function (e) { permSet('notification', permErr(e)); });
+    } catch (e) { permSet('notification', 'throw ' + e); }
+  });
+  $('perm-geo').addEventListener('click', function () {
+    try {
+      navigator.geolocation.getCurrentPosition(function () {
+        permSet('geolocation', 'resolved');
+      }, function (e) {
+        permSet('geolocation', 'error code=' + e.code + ' ' + e.message);
+      }, { timeout: 15000 });
+    } catch (e) { permSet('geolocation', 'throw ' + e); }
+  });
+
+  // 17 print
+  $('print-btn').addEventListener('click', function () {
+    setStatus('print', 'MANUAL', manual('print', 'window.print() called'));
+    window.print();
+  });
+
+  // 18 audio: generated silent WAV (8 kHz, mono, 16-bit, 0.5 s) as Blob URL
+  function silentWavUrl() {
+    var rate = 8000, n = rate / 2;
+    var buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    var w = function (o, s) { for (var i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE');
+    w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    w(36, 'data'); v.setUint32(40, n * 2, true);
+    return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+  }
+  var aud = $('aud');
+  aud.src = silentWavUrl();
+  aud.addEventListener('error', function () {
+    setStatus('audio', 'FAIL', 'audio element error code=' + (aud.error && aud.error.code));
+  });
+
+  // 19 clipboard-text
+  function copyTest() {
+    var inp = $('clip-in');
+    inp.focus();
+    inp.select();
+    var ok = false, err = '';
+    try { ok = document.execCommand('copy'); } catch (e) { err = ' exception=' + e; }
+    return 'execCommand(copy) returned ' + ok + err;
+  }
+  $('clip-btn').addEventListener('click', function () {
+    setStatus('clipboard-text', 'MANUAL', manual('clipboard-text', copyTest()));
+  });
+  FNS['clipboard-text'] = function () { return { status: 'MANUAL', detail: copyTest() }; };
+
+  // 21 storage
+  FNS.storage = function () {
+    var tok = 'gomium-' + Date.now(), ls = false, ck = null, err = '';
+    try {
+      localStorage.setItem('gomium-test', tok);
+      ls = localStorage.getItem('gomium-test') === tok;
+      localStorage.removeItem('gomium-test');
+    } catch (e) { err = ' localStorage-exception=' + e; }
+    if (!navigator.cookieEnabled) return { status: 'SKIP', detail: 'cookies disabled; localStorage roundtrip=' + ls + err };
+    try {
+      document.cookie = 'gomium-test=' + tok + '; path=/; SameSite=Lax';
+      ck = document.cookie.split('; ').indexOf('gomium-test=' + tok) >= 0;
+      document.cookie = 'gomium-test=; path=/; max-age=0';
+    } catch (e) { ck = false; err += ' cookie-exception=' + e; }
+    var ok = ls && ck === true;
+    return { status: ok ? 'PASS' : 'FAIL', detail: 'localStorage roundtrip=' + ls + ' cookie roundtrip=' + ck + err };
+  };
+
+  // 22 messaging
+  FNS.messaging = function () {
+    return new Promise(function (resolve) {
+      var tok = 'm-' + Math.random().toString(36).slice(2), t0 = performance.now(), dt = -1;
+      var on = function (e) { if (e.data && e.data.gomium === tok) dt = performance.now() - t0; };
+      window.addEventListener('message', on);
+      window.postMessage({ gomium: tok }, '*');
+      setTimeout(function () {
+        window.removeEventListener('message', on);
+        var ok = dt >= 0 && dt < 100;
+        resolve({ status: ok ? 'PASS' : 'FAIL', detail: 'received=' + (dt >= 0) + ' latency=' + dt.toFixed(1) + 'ms (limit 100ms)' });
+      }, 100);
+    });
+  };
+})();
+</script>
+</body>
+</html>

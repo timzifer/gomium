@@ -1,0 +1,53 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.o
+*.obj
+
+# Go
+*.test
+*.out
+/vendor/
+go.work
+go.work.sum
+
+# CEF runtime / build output
+/Release/
+/Debug/
+/build/
+*.app/
+
+# Logs
+*.log
+/logs/
+
+# Runtime artifacts
+/shots/
+/snapshots/
+/GPUCache/
+/webcache/
+/terminal-state/
+
+# IDE
+.idea/*
+!.idea/gomium.iml
+!.idea/modules.xml
+.idea/workspace.xml
+.idea/shelf/
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.vscode/
+*.iml.local
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Agenten-Werkzeugkonfiguration, nicht Teil des Projekts
+.ai/

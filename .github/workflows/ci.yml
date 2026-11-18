@@ -1,0 +1,125 @@
+name: CI
+
+# The binding never links against libcef - the only LDFLAGS in the tree are
+# -ldl and -framework Cocoa, both system libraries - and the CEF headers are
+# vendored under include/. So everything below builds and tests from a plain
+# checkout: no CEF distribution to download, no network beyond the module
+# cache. That is what makes a three-platform matrix affordable at all.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Supersede a run when new commits land on the same ref. On a private repo the
+# matrix bills Linux x1, Windows x2 and macOS x10, so an abandoned run is real
+# money. Measured on the first runs of this workflow: Windows ~18 min (the cgo
+# build, then vet and test each pay for it again), macOS ~2 min cold and ~30 s
+# with a warm module cache, Linux ~2 min. That is roughly 60 billable minutes
+# for a cold full run and ~45 warm - dominated by Windows, not by the x10
+# multiplier.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Explicit, and asserted below. Go silently falls back to CGO_ENABLED=0 when
+  # it finds no C compiler, which would drop every cgo file from the binding
+  # and still report success.
+  CGO_ENABLED: "1"
+
+jobs:
+  build:
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # macos-latest is arm64. Together with linux/amd64 and windows/amd64
+        # this compiles the ELF, Mach-O and PE-COFF trampoline blocks of
+        # cef_shim.S; the ELF/arm64 one is covered by the cross build in the
+        # crosscheck job. windows/arm64 is left out on purpose - PE-COFF arm64
+        # ends in an #error there.
+        #
+        # To cut the bill: guard the expensive entries with
+        #   if: github.event_name != 'pull_request'
+        # so they only run on master pushes and manual dispatch. Windows is the
+        # one to drop first - it costs more than macOS despite the smaller
+        # multiplier.
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Assert cgo is really enabled
+        shell: bash
+        run: |
+          go env CGO_ENABLED CC GOOS GOARCH
+          n=$(go list -f '{{len .CgoFiles}}' ./internal/cef)
+          echo "internal/cef cgo files: $n"
+          if [ "$n" -eq 0 ]; then
+            echo "::error::cgo is off - this job would compile none of the binding and pass vacuously"
+            exit 1
+          fi
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+  crosscheck:
+    name: crosscheck (linux)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt would rewrite:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: File selection per GOOS
+        # go list only selects and parses files, so this needs no cross
+        # toolchain. It catches build-tag mistakes and, on freebsd, the case
+        # where internal/cefshim would be left carrying cef_shim.c with no cgo
+        # file at all ("C source files not allowed when not using cgo").
+        run: |
+          status=0
+          for os in linux darwin windows freebsd; do
+            while read -r line; do
+              echo "$os $line"
+              case "$line" in *"<nil>"*) ;; *) status=1 ;; esac
+            done < <(GOOS=$os go list -e -f '{{.ImportPath}} {{.Error}}' ./...)
+          done
+          exit $status
+
+      - name: Cross build linux/arm64
+        # Compiles the ELF/arm64 trampoline block of cef_shim.S plus every C
+        # file - the one architecture the runner matrix cannot reach, since
+        # the free arm64 Linux runners are public-repo only. Possible only
+        # because nothing links against libcef.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          CC=aarch64-linux-gnu-gcc GOARCH=arm64 go build ./...

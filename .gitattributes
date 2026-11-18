@@ -1,0 +1,10 @@
+# Everything tracked here is text and is stored with LF (all 440 files, checked).
+# Pin the working tree to LF on every platform.
+#
+# This is load-bearing, not cosmetic: internal/cefshim/cef_shim_test.go compares
+# the checked-in generated files - cef_shim.S, cef_shim.c, cef_shim_symbols.go -
+# byte for byte against fresh generator output, and tools/cefshim always writes
+# LF. Git for Windows defaults to core.autocrlf=true, so without this the tree
+# checks out with CRLF and that test fails on Windows while passing on Linux and
+# macOS. gofmt would disagree with a CRLF checkout for the same reason.
+* text=auto eol=lf
