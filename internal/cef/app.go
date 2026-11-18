@@ -61,6 +61,13 @@ type (
 		initialized bool
 		closed      bool
 
+		// cefMu guards work that finishes on a goroutine of its own and then
+		// has to call into CEF (binding answers): it runs under the read lock
+		// and only while cefDown is false. Close takes the write lock before
+		// cef_shutdown, so nothing reaches a CEF that is gone.
+		cefMu   sync.RWMutex
+		cefDown bool
+
 		workerWG sync.WaitGroup
 	}
 
@@ -161,6 +168,10 @@ func (c *cefApp) Close() error {
 	c.shutdownOnce.Do(func() { close(c.shutdownChannel) })
 	c.workerWG.Wait()
 	c.pumpReady.Store(false)
+
+	c.cefMu.Lock()
+	c.cefDown = true
+	c.cefMu.Unlock()
 
 	if initialized {
 		C.cef_shutdown()
@@ -437,6 +448,17 @@ func (c *cefApp) verifyAndConfigureLibrary() error {
 		return err
 	}
 	return nil
+}
+
+// withCEF runs fn unless CEF has been shut down (or is being shut down). For
+// goroutines that finish late: a binding answer after Close is dropped, along
+// with the references it would release - they died with CEF.
+func (c *cefApp) withCEF(fn func()) {
+	c.cefMu.RLock()
+	defer c.cefMu.RUnlock()
+	if !c.cefDown {
+		fn()
+	}
 }
 
 // doMessageWork performs one iteration of CEF's message loop plus the native

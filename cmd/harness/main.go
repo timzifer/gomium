@@ -788,6 +788,10 @@ mde.ping().then(function (v) {
 if (!isFrame) {
   mde.add(2, 3).then(function (v) { console.log("BINDING_ADD " + v); }, function (e) { console.log("BINDING_ADD_ERR " + e); });
   mde.fail().then(function (v) { console.log("BINDING_FAIL_UNEXPECTED " + v); }, function (e) { console.log("BINDING_FAIL " + e); });
+  var tc = performance.now();
+  mde.cookieCount().then(function (v) {
+    console.log("BINDING_UIWAIT " + v + " ms=" + (performance.now() - tc).toFixed(1));
+  }, function (e) { console.log("BINDING_UIWAIT_ERR " + e); });
   var frame = document.createElement("iframe");
   frame.src = "/";
   document.body.appendChild(frame);
