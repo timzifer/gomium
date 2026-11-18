@@ -179,7 +179,7 @@ func WithCustomScheme(name string, options SchemeOptions) Option {
 	return cef.WithCustomScheme(name, options)
 }
 
-// WithBinding exposes fn to page JavaScript as path, e.g. "mde.getPieces".
+// WithBinding exposes fn to page JavaScript as path, e.g. "app.getItems".
 // fn is func(...) error, func(...) T or func(...) (T, error). It is only
 // reachable through a BindingGuard that admits the calling browser (see
 // WithBindingGuard). A bad path or signature is reported by New.

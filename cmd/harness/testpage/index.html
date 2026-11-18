@@ -142,7 +142,7 @@ a{color:var(--acc);word-break:break-all}
 
 <section class="t" id="t-popup-dialog">
   <header><h2>8b. popup-dialog (binding popup)</h2><span class="badge b-NOT">NOT RUN</span><button data-run="popup-dialog">Run</button></header>
-  <p>The link opens this page again with ?popup in a new window (target="_blank", user gesture). The popup shows POPUP VISIBLE in large text and calls mde.ping, if the host bound it. The host should show the popup offscreen, e.g. in a dialog, instead of a native window.</p>
+  <p>The link opens this page again with ?popup in a new window (target="_blank", user gesture). The popup shows POPUP VISIBLE in large text and calls app.ping, if the host bound it. The host should show the popup offscreen, e.g. in a dialog, instead of a native window.</p>
   <p><a id="popup-link" href="?popup" target="_blank">open popup page (?popup)</a></p>
   <p class="steps">click the link; a popup with POPUP VISIBLE must appear inside the host (dialog), not as a separate window. Close it with the host's close control; the popup must go away with it. Log lines: BINDING_POPUP_RESULT / BINDING_POPUP_ERR (popup), BINDING_MAIN_RESULT / BINDING_MAIN_ERR (opener).</p>
   <div class="result"></div>
@@ -412,15 +412,15 @@ a{color:var(--acc);word-break:break-all}
   // popup mode. Binding results go to the log like in GOMIUM_BINDING_POPUP_TEST.
   var isPopup = location.search.indexOf('popup') !== -1;
   function pingBinding(tag) {
-    if (typeof mde === 'undefined' || !mde || typeof mde.ping !== 'function') {
-      console.log('[GOMIUM-TEST] popup-dialog ' + tag + ' mde=undefined');
+    if (typeof app === 'undefined' || !app || typeof app.ping !== 'function') {
+      console.log('[GOMIUM-TEST] popup-dialog ' + tag + ' app=undefined');
       return;
     }
-    mde.ping().then(function (v) { console.log('BINDING_' + tag + '_RESULT ' + v); },
+    app.ping().then(function (v) { console.log('BINDING_' + tag + '_RESULT ' + v); },
       function (e) { console.log('BINDING_' + tag + '_ERR ' + e); });
   }
   if (isPopup) {
-    console.log('POPUP_PROBE url=' + location.href + ' mde=' + typeof mde);
+    console.log('POPUP_PROBE url=' + location.href + ' app=' + typeof app);
     document.body.innerHTML = '<h1 id="popup-visible" style="font-size:80px;font-family:sans-serif;margin:24px">POPUP VISIBLE</h1>';
     pingBinding('POPUP');
   } else {

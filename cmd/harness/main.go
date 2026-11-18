@@ -442,7 +442,7 @@ func main() {
 
 				// GOMIUM_BINDING_POPUP_TEST=1: the opener has a target="_blank" link
 				// at 200,200 (clicked by the trusted click below); the popup calls
-				// mde.ping too. Both report to the log as BINDING_MAIN/POPUP lines.
+				// app.ping too. Both report to the log as BINDING_MAIN/POPUP lines.
 				if os.Getenv("GOMIUM_BINDING_POPUP_TEST") != "" {
 					mux := http.NewServeMux()
 					mux.HandleFunc("/popup", func(w http.ResponseWriter, _ *http.Request) {
@@ -457,7 +457,7 @@ func main() {
 					initialUrl = "http://127.0.0.1:18779/"
 				}
 
-				// GOMIUM_BINDING_TEST=1: the page calls the binding mde.ping and
+				// GOMIUM_BINDING_TEST=1: the page calls the binding app.ping and
 				// logs the answer as console line BINDING_RESULT / BINDING_ERR
 				if os.Getenv("GOMIUM_BINDING_TEST") != "" {
 					mux := http.NewServeMux()
@@ -766,13 +766,13 @@ func main() {
 const bindingPopupOpener = `<!doctype html><html><body style="margin:0">
 <a href="/popup" target="_blank" style="position:absolute;left:180px;top:180px;font-size:40px">popup</a>
 <script>
-mde.ping().then(function (v) { console.log("BINDING_MAIN_RESULT " + v); },
+app.ping().then(function (v) { console.log("BINDING_MAIN_RESULT " + v); },
   function (e) { console.log("BINDING_MAIN_ERR " + e); });
 </script></body></html>`
 
 const bindingPopupTarget = `<!doctype html><html><body style="margin:0;font-size:80px;font-family:sans-serif"><h1>POPUP VISIBLE</h1><script>
-console.log("POPUP_PROBE url=" + location.href + " mde=" + typeof mde);
-mde.ping().then(function (v) { console.log("BINDING_POPUP_RESULT " + v); },
+console.log("POPUP_PROBE url=" + location.href + " app=" + typeof app);
+app.ping().then(function (v) { console.log("BINDING_POPUP_RESULT " + v); },
   function (e) { console.log("BINDING_POPUP_ERR " + e); });
 </script></body></html>`
 
@@ -780,16 +780,16 @@ const bindingPage = `<!doctype html><html><body><script>
 var isFrame = window.top !== window;
 var tag = isFrame ? "FRAME" : "MAIN";
 var t0 = performance.now();
-mde.ping().then(function (v) {
+app.ping().then(function (v) {
   console.log("BINDING_" + tag + "_RESULT " + v + " ms=" + (performance.now() - t0).toFixed(1));
 }, function (e) {
   console.log("BINDING_" + tag + "_ERR " + e);
 });
 if (!isFrame) {
-  mde.add(2, 3).then(function (v) { console.log("BINDING_ADD " + v); }, function (e) { console.log("BINDING_ADD_ERR " + e); });
-  mde.fail().then(function (v) { console.log("BINDING_FAIL_UNEXPECTED " + v); }, function (e) { console.log("BINDING_FAIL " + e); });
+  app.add(2, 3).then(function (v) { console.log("BINDING_ADD " + v); }, function (e) { console.log("BINDING_ADD_ERR " + e); });
+  app.fail().then(function (v) { console.log("BINDING_FAIL_UNEXPECTED " + v); }, function (e) { console.log("BINDING_FAIL " + e); });
   var tc = performance.now();
-  mde.cookieCount().then(function (v) {
+  app.cookieCount().then(function (v) {
     console.log("BINDING_UIWAIT " + v + " ms=" + (performance.now() - tc).toFixed(1));
   }, function (e) { console.log("BINDING_UIWAIT_ERR " + e); });
   var frame = document.createElement("iframe");
