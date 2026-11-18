@@ -325,7 +325,13 @@ func main() {
 			if os.Getenv("GOMIUM_BINDING_POPUP_TEST") != "" {
 				clientOptions = append(clientOptions,
 					gomium.WithPopupHandler(func(gomium.Browser, gomium.PopupRequest) bool { return false }),
-					gomium.WithPopupView(func(_ gomium.Browser, _ gomium.PopupRequest) (gomium.PopupView, bool) {
+					gomium.WithPopupView(func(opener gomium.Browser, _ gomium.PopupRequest) (gomium.PopupView, bool) {
+						// GOMIUM_POPUP_ABORT=1: close the opener while CEF builds the
+						// popup, so CEF aborts it - the prepared client must go away
+						if os.Getenv("GOMIUM_POPUP_ABORT") != "" && opener != nil {
+							logger.Info().Msg("binding-popup-test: closing opener during popup creation")
+							go func() { _ = opener.Close() }()
+						}
 						popupImage := gomium.NewImageRenderHandler(image.NewRGBA(image.Rect(0, 0, 1024, 786)), func(result image.Image) {
 							outputFile, err := os.Create(fmt.Sprintf("shots/popup-%d.jpg", time.Now().UnixMicro()))
 							if err != nil {

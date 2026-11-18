@@ -141,7 +141,13 @@ func goOnAfterCreated(self *C.cef_life_span_handler_t, cb *C.cef_browser_t) {
 		c.Lock()
 		c.browsers[identifier] = b
 		attach := c.popupAttach
+		// the popup exists now - its opener stops tracking it as pending
+		opener, slot := c.popupOpener, c.popupSlot
+		c.popupOpener = nil
 		c.Unlock()
+		if opener != nil {
+			opener.forgetPendingPopup(slot, c)
+		}
 		if attach != nil {
 			attach(b)
 		}
@@ -166,6 +172,7 @@ func goOnAfterCreated(self *C.cef_life_span_handler_t, cb *C.cef_browser_t) {
 func goOnBeforePopup(self *C.cef_life_span_handler_t,
 	cefBrowser *C.cef_browser_t,
 	frame *C.cef_frame_t,
+	popupID C.int,
 	targetUrl *C.cef_string_t,
 	targetFrameName *C.cef_string_t,
 	targetDisposition C.cef_window_open_disposition_t,
@@ -203,16 +210,92 @@ func goOnBeforePopup(self *C.cef_life_span_handler_t,
 		return 0
 	}
 	popup, ok := view(browserInstance, request)
-	if !ok || !openPopupView(popup, windowInfo, popupClient) {
+	if !ok {
 		return 0
 	}
+	slot := popupSlot{
+		opener: int(C.cBridgeGetBrowserIdentifier(cefBrowser)),
+		popup:  int(popupID),
+	}
+	openPopupView(c, slot, popup, windowInfo, popupClient)
 	return 0
 }
 
+// popupSlot identifies a popup CEF is still creating: the opener browser and
+// the popup_id CEF passed to on_before_popup for it.
+type popupSlot struct {
+	opener int
+	popup  int
+}
+
+// addPendingPopup records the client of a popup that CEF has yet to create.
+func (c *client) addPendingPopup(slot popupSlot, popup *client) {
+	c.Lock()
+	if c.pendingPopups == nil {
+		c.pendingPopups = make(map[popupSlot]*client)
+	}
+	c.pendingPopups[slot] = popup
+	c.Unlock()
+
+	popup.Lock()
+	popup.popupOpener = c
+	popup.popupSlot = slot
+	popup.Unlock()
+}
+
+// takePendingPopup removes and returns the client still waiting in slot.
+func (c *client) takePendingPopup(slot popupSlot) *client {
+	c.Lock()
+	defer c.Unlock()
+	popup := c.pendingPopups[slot]
+	delete(c.pendingPopups, slot)
+	return popup
+}
+
+// forgetPendingPopup drops slot if it still belongs to popup.
+func (c *client) forgetPendingPopup(slot popupSlot, popup *client) {
+	c.Lock()
+	defer c.Unlock()
+	if c.pendingPopups[slot] == popup {
+		delete(c.pendingPopups, slot)
+	}
+}
+
+// goOnBeforePopupAborted runs when CEF fails to create a popup that
+// on_before_popup allowed. No on_after_created or on_before_close follows for
+// it, so the client openPopupView prepared would stay registered for good -
+// close it here.
+//
+//export goOnBeforePopupAborted
+func goOnBeforePopupAborted(self *C.cef_life_span_handler_t, cefBrowser *C.cef_browser_t, popupID C.int) {
+	defer releaseBase(unsafe.Pointer(cefBrowser))
+
+	c, _ := lifeSpanHandler(self)
+	if c == nil {
+		return
+	}
+
+	slot := popupSlot{
+		opener: int(C.cBridgeGetBrowserIdentifier(cefBrowser)),
+		popup:  int(popupID),
+	}
+	popup := c.takePendingPopup(slot)
+	if popup == nil {
+		return
+	}
+	popup.Lock()
+	popup.popupOpener = nil
+	popup.Unlock()
+
+	c.logger.Debug().Int("popup", slot.popup).Msg("popup aborted, closing its client")
+	go func() { _ = popup.Close() }()
+}
+
 // openPopupView creates the client of an offscreen popup and tells CEF to
-// build the popup windowless with that client. Returns false when the view
-// cannot render - CEF then opens its native window.
-func openPopupView(view PopupView, windowInfo *C.cef_window_info_t, popupClient **C.cef_client_t) bool {
+// build the popup windowless with that client. The opener tracks the client
+// in slot until CEF has created the popup or aborted it. Returns false when
+// the view cannot render - CEF then opens its native window.
+func openPopupView(opener *client, slot popupSlot, view PopupView, windowInfo *C.cef_window_info_t, popupClient **C.cef_client_t) bool {
 	app := getInstance()
 	if app == nil {
 		return false
@@ -233,9 +316,15 @@ func openPopupView(view PopupView, windowInfo *C.cef_window_info_t, popupClient 
 		return false
 	}
 
+	// *popupClient arrives holding a reference to the opener's client that
+	// CEF does not take back when the value is replaced - drop it here
+	if *popupClient != nil {
+		releaseBase(unsafe.Pointer(*popupClient))
+	}
 	// CEF releases the reference it receives here; the client wrapper keeps its own
 	addRefBase(unsafe.Pointer(created.ptr))
 	*popupClient = created.ptr
+	opener.addPendingPopup(slot, created)
 
 	windowInfo.size = C.sizeof_cef_window_info_t
 	windowInfo.windowless_rendering_enabled = 1

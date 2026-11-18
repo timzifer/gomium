@@ -27,10 +27,16 @@ static int CEF_CALLBACK on_before_popup_trampoline(struct _cef_life_span_handler
                                                    struct _cef_browser_settings_t* settings,
                                                    struct _cef_dictionary_value_t** extra_info,
                                                    int* no_javascript_access) {
-    return goOnBeforePopup(self, browser, frame,
+    return goOnBeforePopup(self, browser, frame, popup_id,
                            (cef_string_t*)target_url, (cef_string_t*)target_frame_name,
                            target_disposition, user_gesture,
                            (cef_window_info_t*)windowInfo, (cef_client_t**)client);
+}
+
+static void CEF_CALLBACK on_before_popup_aborted_trampoline(struct _cef_life_span_handler_t* self,
+                                                           struct _cef_browser_t* browser,
+                                                           int popup_id) {
+    goOnBeforePopupAborted(self, browser, popup_id);
 }
 
 struct _cef_life_span_handler_t* cLifeSpanHandlerCreate() { DEBUG_CALL;
@@ -42,6 +48,7 @@ struct _cef_life_span_handler_t* cLifeSpanHandlerCreate() { DEBUG_CALL;
     handler -> do_close = do_close_trampoline;
     handler -> on_before_close = on_before_close_trampoline;
     handler -> on_before_popup = on_before_popup_trampoline;
+    handler -> on_before_popup_aborted = on_before_popup_aborted_trampoline;
 
     return handler;
 }

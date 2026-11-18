@@ -32,6 +32,7 @@ external message pump for 20 s and writes every paint to `shots/<µs>.jpg` (crea
 | `GOMIUM_BINDING_TEST=1` | `WithBinding`: result, error and an iframe the guard rejects (`BINDING_*` log lines) |
 | `GOMIUM_BINDING_POPUP_TEST=1` | binding in a `WithPopupView` popup, rendered to `shots/popup-*.jpg`, auto-closed after 5 s |
 | `GOMIUM_POPUP_NO_GUARD=1` | with the above: popup without its own guard, falls back to `WithDefaultBindingGuard` |
+| `GOMIUM_POPUP_ABORT=1` | with the above: closes the opener while CEF builds the popup, so CEF aborts it |
 | `GOMIUM_V8_LISTENER_TEST=1` | `WithV8Listener` injects a script through its frame (`V8_LISTENER_INJECTED` log lines) |
 | `GOMIUM_POPUP_TEST=1` | trusted click on `target=_blank`, popup routed into the opener |
 | `GOMIUM_DOWNLOAD_TEST=1` | download handler against a local attachment response |

@@ -111,6 +111,15 @@ type (
 		// clients the popup path created. Guarded by the client mutex.
 		popupAttach func(Browser)
 		popupOwned  bool
+		// pendingPopups holds the clients openPopupView created for popups
+		// of this (opener) client that CEF has not built yet. An entry leaves
+		// when the popup browser is created, when CEF aborts the popup
+		// (the client is closed then), or when this client closes.
+		// popupOpener/popupSlot point back from such a popup client to its
+		// entry until the popup browser exists. Guarded by the client mutex.
+		pendingPopups map[popupSlot]*client
+		popupOpener   *client
+		popupSlot     popupSlot
 
 		createTimeout     time.Duration
 		closeTimeout      time.Duration
@@ -385,6 +394,12 @@ func (c *client) closeInternal(pump func()) error {
 	clientKey := unsafe.Pointer(c.ptr)
 
 	c.browsers = make(map[int]*browser)
+	// popups this client opened that CEF has not built yet die with it; a
+	// popup client that is still pending leaves its opener's list
+	pendingPopups := c.pendingPopups
+	c.pendingPopups = nil
+	opener, slot := c.popupOpener, c.popupSlot
+	c.popupOpener = nil
 
 	C.cClientFree(c.ptr)
 	c.ptr = nil
@@ -461,6 +476,18 @@ func (c *client) closeInternal(pump func()) error {
 		app.clientMutex.Lock()
 		delete(app.clients, clientKey)
 		app.clientMutex.Unlock()
+	}
+
+	if opener != nil {
+		opener.forgetPendingPopup(slot, c)
+	}
+	for _, popup := range pendingPopups {
+		popup.Lock()
+		popup.popupOpener = nil
+		popup.Unlock()
+		if closeErr := popup.closeInternal(pump); closeErr != nil {
+			c.logger.Warn().Err(closeErr).Msg("error closing pending popup client")
+		}
 	}
 
 	c.logger.Trace().Msg("client closed")
