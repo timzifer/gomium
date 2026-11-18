@@ -80,6 +80,12 @@ type (
 		AddV8Listener(listener V8Listener)
 	}
 
+	// V8Listener is told about every V8 context of the render process. Both
+	// methods run synchronously on the renderer main thread - the only thread
+	// on which CEF accepts calls on the frame and browser they receive -
+	// before any page script of a new context runs. Do not block in them:
+	// the page waits. Browser and frame are borrowed for the duration of the
+	// call.
 	V8Listener interface {
 		V8ContextCreated(CefBrowser, CefFrame)
 		V8ContextReleased(CefBrowser, CefFrame)
@@ -111,6 +117,10 @@ func V8ListenerFuncs(created, released func(b CefBrowser, f CefFrame)) V8Listene
 	}
 }
 
+// AddV8Listener registers a listener on this app object. V8 contexts exist
+// only in the render process, where the app is created inside
+// ExecuteSubprocess - a listener added to the browser-process app never
+// fires. Use WithV8Listener, which reaches both processes.
 func (c *cefApp) AddV8Listener(listener V8Listener) {
 
 	c.v8listenerLock.Lock()

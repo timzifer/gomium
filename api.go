@@ -179,6 +179,11 @@ func WithCustomScheme(name string, options SchemeOptions) Option {
 	return cef.WithCustomScheme(name, options)
 }
 
+// WithV8Listener registers a listener for the V8 contexts of the render
+// process. Pass it to New and to ExecuteSubprocess, like every option - the
+// listener runs in the render process, synchronously on its main thread.
+func WithV8Listener(listener V8Listener) Option { return cef.WithV8Listener(listener) }
+
 // WithBinding exposes fn to page JavaScript as path, e.g. "app.getItems".
 // fn is func(...) error, func(...) T or func(...) (T, error). It is only
 // reachable through a BindingGuard that admits the calling browser (see

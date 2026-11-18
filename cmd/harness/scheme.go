@@ -41,10 +41,22 @@ func schemeTestOptions() []gomium.Option {
 // GOMIUM_BINDING_TEST=1: bindings for the page in bindingPage. Both processes
 // get the same options, so the renderer knows the same functions.
 func bindingTestOptions() []gomium.Option {
-	if os.Getenv("GOMIUM_BINDING_TEST") == "" && os.Getenv("GOMIUM_BINDING_POPUP_TEST") == "" {
-		return nil
+	var opts []gomium.Option
+	// GOMIUM_V8_LISTENER_TEST=1: a V8 listener injects a script through the
+	// frame it receives. Frame calls work only on the renderer main thread,
+	// so the console line proves where the listener runs.
+	if os.Getenv("GOMIUM_V8_LISTENER_TEST") != "" {
+		opts = append(opts, gomium.WithV8Listener(gomium.V8ListenerFuncs(
+			func(_ gomium.CefBrowser, frame gomium.CefFrame) {
+				frame.ExecuteJavaScript(`console.log("V8_LISTENER_INJECTED main=" + (window.top === window))`, nil, 0)
+			},
+			nil,
+		)))
 	}
-	opts := []gomium.Option{
+	if os.Getenv("GOMIUM_BINDING_TEST") == "" && os.Getenv("GOMIUM_BINDING_POPUP_TEST") == "" {
+		return opts
+	}
+	opts = append(opts,
 		gomium.WithBinding("app.ping", func() (string, error) { return "pong", nil }),
 		gomium.WithBinding("app.add", func(a, b float64) (float64, error) { return a + b, nil }),
 		gomium.WithBinding("app.fail", func() error { return errors.New("boom") }),
@@ -54,7 +66,7 @@ func bindingTestOptions() []gomium.Option {
 			cookies, err := gomium.GlobalCookieManager().CookiesForUrl("https://example.org/", true)
 			return len(cookies), err
 		}),
-	}
+	)
 	// popup mode: browsers without a guard of their own get the default, which
 	// rejects everything, so the popup's result shows which guard it got
 	if os.Getenv("GOMIUM_BINDING_POPUP_TEST") != "" {

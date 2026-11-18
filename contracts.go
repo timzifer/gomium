@@ -198,6 +198,10 @@ type FileDialogHandler = cef.FileDialogHandler
 // FileDialogCallback finishes a dialog taken over by a FileDialogHandler.
 type FileDialogCallback = cef.FileDialogCallback
 
+// V8Listener is told about every V8 context of the render process - register
+// it with WithV8Listener. Both methods run synchronously on the renderer main
+// thread, before any page script of a new context; browser and frame are
+// borrowed for the call. Do not block in them.
 type V8Listener interface {
 	V8ContextCreated(CefBrowser, CefFrame)
 	V8ContextReleased(CefBrowser, CefFrame)

@@ -12,6 +12,12 @@ fetched — they are listed for the record of what changed when.
 
 ## [Unreleased]
 
+### Added
+
+- `WithV8Listener`: registers a V8 context listener in both processes. Before, a host
+  could not reach the render process at all — `AddV8Listener` on the browser-process
+  app never fires, since V8 contexts exist only in the renderer.
+
 ### Changed
 
 - Binding guards and bound functions run on a goroutine of their own instead of the
@@ -21,6 +27,9 @@ fetched — they are listed for the record of what changed when.
 
 ### Fixed
 
+- V8 listeners run synchronously on the renderer main thread, before any page script
+  of the new context, instead of on a goroutine where CEF rejected every call on the
+  frame and browser they receive.
 - A bound function that waits for the UI thread itself (cookie manager, DevTools
   `Call`, `PrintToPdf`) no longer blocks until its timeout, and a slow one no longer
   freezes every browser while it runs.

@@ -180,3 +180,15 @@ func absoluteOption(c *cefApp, option, path string) (string, bool) {
 	}
 	return abs, true
 }
+
+// WithV8Listener registers a listener for the V8 contexts of the render
+// process (see V8Listener). Like every option it has to reach both
+// processes: pass it to New and to ExecuteSubprocess - the listener only
+// ever runs in the render process, where the contexts live.
+func WithV8Listener(listener V8Listener) Option {
+	return func(c *cefApp) {
+		if listener != nil {
+			c.v8listeners = append(c.v8listeners, listener)
+		}
+	}
+}
