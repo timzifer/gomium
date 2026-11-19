@@ -19,6 +19,9 @@ fetched — they are listed for the record of what changed when.
   paint; `NewImageRenderHandler` copies the full view for every callback (a 16x16 paint
   on a 1080p view: 1.9 ms and 8.3 MB vs. 0.1 µs and 0 B). The harness runs it as the
   `FRAME` scenario (#23).
+- CI runs the unit tests with `-race` (Linux), and a nightly workflow (`race.yml`) runs
+  the harness scenarios as a `-race` build; `refdebug.sh` fails a scenario on
+  `WARNING: DATA RACE`. The first run found no race (#25).
 
 ### Changed
 
