@@ -603,16 +603,22 @@ func main() {
 								logger.Error().Err(err).Msg("context-test: create A failed")
 								return
 							}
+							// every RequestContext holds a reference until Release;
+							// one left over keeps its CEF browser context alive past
+							// cef_shutdown (a DCHECK in CEF's debug runtime)
+							defer ctxA.Release()
 							ctxB, err := gomium.NewRequestContext()
 							if err != nil {
 								logger.Error().Err(err).Msg("context-test: create B failed")
 								return
 							}
+							defer ctxB.Release()
 							global, err := gomium.GlobalRequestContext()
 							if err != nil {
 								logger.Error().Err(err).Msg("context-test: global failed")
 								return
 							}
+							defer global.Release()
 							logger.Info().Bool("a-global", ctxA.IsGlobal()).Bool("global-global", global.IsGlobal()).Msg("context-test: contexts created")
 
 							expires := time.Now().Add(time.Hour)

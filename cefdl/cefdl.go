@@ -33,6 +33,11 @@ const (
 	// bzip2 compressed, which the standard library decompresses without any
 	// external dependency.
 	ArchiveType = "minimal"
+	// DebugArchiveType is the flavour Options.Debug downloads. "standard" is
+	// the only one that carries Debug/: a libcef built with DCHECKs, which
+	// turn reference-count errors into crashes and report the wrapper
+	// objects still alive at cef_shutdown.
+	DebugArchiveType = "standard"
 	// MarkerFile records the version installed in a destination directory so
 	// that a repeated Fetch can skip the work.
 	MarkerFile = ".cef-version"
@@ -47,7 +52,8 @@ type Options struct {
 	// Platform is a CEF platform key such as windows64, linux64 or
 	// macosarm64. Empty means the platform this binary runs on.
 	Platform string
-	// Dest receives the runtime files: Release/ and Resources/ of the archive
+	// Dest receives the runtime files: Release/ (Debug/ with Debug) and
+	// Resources/ of the archive
 	// are flattened into it, which is the layout the loader expects. Required.
 	Dest string
 	// CacheDir holds the downloaded archives. Empty means
@@ -59,6 +65,11 @@ type Options struct {
 	HeaderDest string
 	// Force unpacks even when Dest already holds this version.
 	Force bool
+	// Debug unpacks the debug runtime - Debug/ of the standard archive, about
+	// twice the download of the minimal one - instead of Release/. It is for
+	// checking gomium itself, not for shipping: the debug libcef is slow and
+	// stops the process on the first failed DCHECK.
+	Debug bool
 	// Log receives progress lines. Nil is silent.
 	Log func(string)
 	// Client is used for index and download. Nil uses a default client with a
@@ -85,6 +96,30 @@ func (o Options) logf(format string, args ...any) {
 	if o.Log != nil {
 		o.Log(fmt.Sprintf(format, args...))
 	}
+}
+
+func (o Options) archiveType() string {
+	if o.Debug {
+		return DebugArchiveType
+	}
+	return ArchiveType
+}
+
+// binDir is the directory of the archive whose binaries land in Dest.
+func (o Options) binDir() string {
+	if o.Debug {
+		return "Debug"
+	}
+	return "Release"
+}
+
+// markerValue is what MarkerFile holds for a version: the version, followed
+// by " debug" for the debug runtime, so switching flavours unpacks again.
+func (o Options) markerValue(version string) string {
+	if o.Debug {
+		return version + " debug"
+	}
+	return version
 }
 
 func (o Options) client() *http.Client {
@@ -132,7 +167,7 @@ func Fetch(ctx context.Context, o Options) (Result, error) {
 
 	marker := filepath.Join(o.Dest, MarkerFile)
 	if !o.Force {
-		if current, err := os.ReadFile(marker); err == nil && strings.TrimSpace(string(current)) == build.CEFVersion {
+		if current, err := os.ReadFile(marker); err == nil && strings.TrimSpace(string(current)) == o.markerValue(build.CEFVersion) {
 			o.logf("%s already installed in %s", build.CEFVersion, o.Dest)
 			result.Skipped = true
 			return result, nil
@@ -150,13 +185,13 @@ func Fetch(ctx context.Context, o Options) (Result, error) {
 	result.Archive = archive
 
 	o.logf("unpacking %s -> %s", filepath.Base(archive), o.Dest)
-	written, err := extract(archive, o.Dest, o.HeaderDest)
+	written, err := extract(archive, o.Dest, o.HeaderDest, o.binDir())
 	if err != nil {
 		return result, err
 	}
 	result.Files = written
 
-	if err := os.WriteFile(marker, []byte(build.CEFVersion+"\n"), 0o644); err != nil {
+	if err := os.WriteFile(marker, []byte(o.markerValue(build.CEFVersion)+"\n"), 0o644); err != nil {
 		return result, fmt.Errorf("write marker: %w", err)
 	}
 	o.logf("%d files written, %s ready in %s", written, build.CEFVersion, o.Dest)

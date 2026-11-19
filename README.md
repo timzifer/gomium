@@ -88,6 +88,7 @@ go run ./tools/cefdl                 # fetch the version pinned in cefdl/cef.ver
 go run ./tools/cefdl -list           # show available builds for this platform
 go run ./tools/cefdl -version 151    # newest build on the 151 branch
 go run ./tools/cefdl -headers        # also refresh include/ (overwrites local patches)
+go run ./tools/cefdl -debug          # CEF's debug runtime (DCHECKs), for checking gomium itself
 ```
 
 `cefdl` resolves a build from the official CEF build index

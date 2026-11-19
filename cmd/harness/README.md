@@ -65,5 +65,24 @@ cmd/harness/refdebug.sh build/harness-refdebug.exe POPUP SCHEME
 The ledger covers gomium's own structs (handlers, clients, callbacks), not the CEF
 objects gomium receives - a missing release of a browser or frame stays invisible.
 
+### Debug runtime
+
+CEF's debug build covers the other side: its DCHECKs turn an over-release into a crash
+and check at `cef_shutdown` that no wrapper object is left - a leaked browser shows up
+as `DCHECK failed: all_.empty()` in `browser_context.cc`. `cefdl -debug` unpacks it
+(Debug/ of the 350 MiB standard archive) in place of the release runtime; `refdebug.sh`
+scans CEF's log lines (`:FATAL:`, `Check failed`) along with the ledger findings. The
+debug libcef is slow, so give the scenarios more time:
+
+```sh
+go run ./tools/cefdl -debug -dest Release     # a plain go run ./tools/cefdl switches back
+GOMIUM_RUN_SECONDS=30 GOMIUM_SCENARIO_GRACE=120 cmd/harness/refdebug.sh build/harness-refdebug.exe
+```
+
+After a failed DCHECK the process can hang in its exit path for good - on Windows not
+even `taskkill /F` ends it. `refdebug.sh` abandons it at the deadline and goes on; the
+leftover process holds its memory until a reboot. CI runs this nightly
+(`.github/workflows/cef-debug.yml`, also startable by hand).
+
 The harness uses its own profile, `%TEMP%/gomium-test-profile`, so it never collides with
 another CEF application's process singleton.

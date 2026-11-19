@@ -70,11 +70,11 @@ func resolve(ctx context.Context, o Options) (Build, File, error) {
 			continue
 		}
 		for _, file := range build.Files {
-			if file.Type == ArchiveType {
+			if file.Type == o.archiveType() {
 				return build, file, nil
 			}
 		}
-		return Build{}, File{}, fmt.Errorf("build %s has no %q archive", build.CEFVersion, ArchiveType)
+		return Build{}, File{}, fmt.Errorf("build %s has no %q archive", build.CEFVersion, o.archiveType())
 	}
 	return Build{}, File{}, fmt.Errorf("no build matching %q for platform %s", o.Version, o.Platform)
 }

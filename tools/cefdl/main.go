@@ -14,8 +14,11 @@
 //	cefdl.Fetch(ctx, cefdl.Options{Version: "151.3", Dest: dir})    // any other
 //
 // The build index is the official Spotify-hosted CEF automated build CDN
-// (https://cef-builds.spotifycdn.com). Only the "minimal" archive is used: it
+// (https://cef-builds.spotifycdn.com). The "minimal" archive is used: it
 // carries the release binaries plus the resource files and no debug symbols.
+// -debug takes the "standard" archive instead and unpacks its Debug/ build,
+// a libcef with DCHECKs for checking gomium itself (see the cef-debug CI
+// workflow).
 //
 // Usage:
 //
@@ -24,6 +27,7 @@
 //	go run ./tools/cefdl -version 151.3.16+gbe1e15d+chromium-151.0.7922.109
 //	go run ./tools/cefdl -headers -force
 //	go run ./tools/cefdl -dest ../elsewhere/Release
+//	go run ./tools/cefdl -debug -dest Debug
 package main
 
 import (
@@ -46,19 +50,20 @@ func main() {
 		headersFlag  = flag.Bool("headers", false, "also unpack include/ headers into ./include (gomium development; overwrites local header patches)")
 		forceFlag    = flag.Bool("force", false, "re-unpack even if the destination already holds this version")
 		listFlag     = flag.Bool("list", false, "list the newest available builds for the platform and exit")
+		debugFlag    = flag.Bool("debug", false, "unpack the debug runtime (Debug/ of the standard archive, with DCHECKs) instead of Release/")
 	)
 	flag.Parse()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	if err := run(ctx, *versionFlag, *versionFile, *platformFlag, *destFlag, *cacheFlag, *headersFlag, *forceFlag, *listFlag); err != nil {
+	if err := run(ctx, *versionFlag, *versionFile, *platformFlag, *destFlag, *cacheFlag, *headersFlag, *forceFlag, *listFlag, *debugFlag); err != nil {
 		fmt.Fprintln(os.Stderr, "cefdl:", err)
 		os.Exit(1)
 	}
 }
 
-func run(ctx context.Context, wantVersion, versionFile, platform, dest, cacheDir string, headers, force, list bool) error {
+func run(ctx context.Context, wantVersion, versionFile, platform, dest, cacheDir string, headers, force, list, debug bool) error {
 	if list {
 		builds, err := cefdl.List(ctx, platform, 15, nil)
 		if err != nil {
@@ -95,6 +100,7 @@ func run(ctx context.Context, wantVersion, versionFile, platform, dest, cacheDir
 		CacheDir:   cacheDir,
 		HeaderDest: headerDest,
 		Force:      force,
+		Debug:      debug,
 		Log:        func(line string) { fmt.Println("cefdl: " + line) },
 	})
 	return err

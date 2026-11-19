@@ -22,6 +22,10 @@ fetched — they are listed for the record of what changed when.
   Callback parameters must be released or handed off, and a C call that passes a
   reference on to CEF needs one of its own; bridge parameters say which with
   `REF_CONSUMED` / `REF_BORROWED`.
+- `cefdl.Options.Debug` / `cefdl -debug`: unpacks CEF's debug runtime (Debug/ of the
+  standard archive) instead of the release one. A nightly workflow runs the harness
+  scenarios against it, where CEF's DCHECKs catch over-releases and wrapper objects
+  still alive at `cef_shutdown` - the CEF-side counterpart of the refdebug ledger.
 - `WithV8Listener`: registers a V8 context listener in both processes. Before, a host
   could not reach the render process at all — `AddV8Listener` on the browser-process
   app never fires, since V8 contexts exist only in the renderer.

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -19,11 +20,20 @@ const (
 	fixturePath    = "testdata/cef_fixture.tar.bz2"
 	fixtureVersion = "1.2.3+gabc+chromium-1.2.3.4"
 	fixtureName    = "cef_binary_1.2.3+gabc+chromium-1.2.3.4_windows64_minimal.tar.bz2"
+
+	// the standard archive: Release/ and Debug/
+	standardFixturePath = "testdata/cef_fixture_standard.tar.bz2"
+	standardFixtureName = "cef_binary_1.2.3+gabc+chromium-1.2.3.4_windows64.tar.bz2"
 )
 
 func fixtureSHA1(t *testing.T) string {
 	t.Helper()
-	content, err := os.ReadFile(fixturePath)
+	return fileSHA1(t, fixturePath)
+}
+
+func fileSHA1(t *testing.T, name string) string {
+	t.Helper()
+	content, err := os.ReadFile(name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,6 +49,10 @@ func testCDN(t *testing.T, platform string) (*httptest.Server, *http.Client) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	standard, err := os.ReadFile(standardFixturePath)
+	if err != nil {
+		t.Fatal(err)
+	}
 	body := map[string]any{
 		platform: map[string]any{
 			"versions": []any{
@@ -47,7 +61,8 @@ func testCDN(t *testing.T, platform string) (*httptest.Server, *http.Client) {
 					"chromium_version": "1.2.3.4",
 					"channel":          "stable",
 					"files": []any{
-						map[string]any{"type": "standard", "name": "irrelevant.tar.bz2", "sha1": "x", "size": 1},
+						map[string]any{"type": "debug_symbols", "name": "irrelevant.tar.bz2", "sha1": "x", "size": 1},
+						map[string]any{"type": DebugArchiveType, "name": standardFixtureName, "sha1": fileSHA1(t, standardFixturePath), "size": int64(len(standard))},
 						map[string]any{"type": ArchiveType, "name": fixtureName, "sha1": fixtureSHA1(t), "size": int64(len(content))},
 					},
 				},
@@ -58,6 +73,10 @@ func testCDN(t *testing.T, platform string) (*httptest.Server, *http.Client) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if strings.HasSuffix(request.URL.Path, "index.json") {
 			json.NewEncoder(writer).Encode(body)
+			return
+		}
+		if strings.HasSuffix(request.URL.Path, url.PathEscape(standardFixtureName)) {
+			writer.Write(standard)
 			return
 		}
 		writer.Write(content)
@@ -144,6 +163,59 @@ func TestFetchUnpacksRuntime(t *testing.T) {
 	}
 	if !again.Skipped || again.Files != 0 {
 		t.Fatalf("second call should be a no-op: %+v", again)
+	}
+}
+
+func TestFetchDebugRuntime(t *testing.T) {
+	platform := "windows64"
+	_, client := testCDN(t, platform)
+
+	root := t.TempDir()
+	dest := filepath.Join(root, "Debug")
+	options := Options{
+		Version:  fixtureVersion,
+		Platform: platform,
+		Dest:     dest,
+		CacheDir: filepath.Join(root, "cache"),
+		Client:   client,
+		Debug:    true,
+	}
+	if _, err := Fetch(context.Background(), options); err != nil {
+		t.Fatal(err)
+	}
+
+	// Debug/ and Resources/ of the standard archive, not Release/
+	libcef, err := os.ReadFile(filepath.Join(dest, "libcef.dll"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(libcef) != "debug" {
+		t.Fatalf("libcef.dll holds %q, want the Debug/ build", libcef)
+	}
+	for _, name := range []string{"chrome_elf.dll", "icudtl.dat"} {
+		if _, err := os.Stat(filepath.Join(dest, name)); err != nil {
+			t.Fatalf("%s missing: %v", name, err)
+		}
+	}
+	marker, err := os.ReadFile(filepath.Join(dest, MarkerFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(string(marker)) != fixtureVersion+" debug" {
+		t.Fatalf("marker holds %q", marker)
+	}
+
+	// The release runtime of the same version is a different install.
+	options.Debug = false
+	release, err := Fetch(context.Background(), options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if release.Skipped {
+		t.Fatal("a debug install must not satisfy a release fetch")
+	}
+	if libcef, _ := os.ReadFile(filepath.Join(dest, "libcef.dll")); string(libcef) == "debug" {
+		t.Fatal("release fetch left the debug libcef in place")
 	}
 }
 
@@ -256,6 +328,9 @@ func TestMapPath(t *testing.T) {
 		{"cef_binary_1/include/cef_version.h", "", "", false},
 		{"cef_binary_1/include/cef_version.h", "inc", filepath.Join("inc", "cef_version.h"), true},
 		{"cef_binary_1/Debug/libcef.dll", "", "", false},
+		{"cef_binary_1/Debug/libcef.dll", "debug", filepath.Join(dest, "libcef.dll"), true},
+		{"cef_binary_1/Release/libcef.dll", "debug", "", false},
+		{"cef_binary_1/Resources/icudtl.dat", "debug", filepath.Join(dest, "icudtl.dat"), true},
 		{"cef_binary_1/Release", "", "", false},
 		{"cef_binary_1/Release/../../escape.dll", "", "", false},
 		{"cef_binary_1/LICENSE.txt", "", filepath.Join(dest, "CEF_LICENSE.txt"), true},
@@ -263,7 +338,12 @@ func TestMapPath(t *testing.T) {
 		{"cef_binary_1/README.txt", "", "", false},
 	}
 	for _, testCase := range cases {
-		got, ok := mapPath(testCase.name, dest, testCase.headers)
+		// headers "debug" stands for the debug runtime without headers
+		headers, binDir := testCase.headers, "Release"
+		if headers == "debug" {
+			headers, binDir = "", "Debug"
+		}
+		got, ok := mapPath(testCase.name, dest, headers, binDir)
 		if ok != testCase.ok || (ok && got != testCase.want) {
 			t.Fatalf("%s: got %q/%v, want %q/%v", testCase.name, got, ok, testCase.want, testCase.ok)
 		}

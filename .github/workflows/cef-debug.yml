@@ -1,0 +1,69 @@
+name: CEF debug
+
+# The harness scenarios against CEF's debug runtime: Debug/ of the standard
+# distribution, a libcef with DCHECKs. Where the per-PR refdebug job only sees
+# the structs gomium allocates, this one sees CEF's side of every wrapper -
+# an over-release becomes a failed DCHECK instead of a silent use-after-free,
+# and cef_shutdown checks that no wrapper object is still alive. The harness
+# is a refdebug build as well, so one run covers both ledgers.
+#
+# Nightly rather than per PR: the standard archive is a 350 MiB download
+# (cached per CEF version), the debug libcef is slow, and a finding here
+# rarely needs to block a merge. Run it by hand on PRs that change reference
+# counting.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CGO_ENABLED: "1"
+
+jobs:
+  scenarios:
+    name: scenarios (windows, debug CEF)
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Cache CEF standard distribution
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/gomium-cef
+          key: cef-windows64-standard-${{ hashFiles('cefdl/cef.version') }}
+
+      - name: Fetch CEF debug runtime
+        # into ./Release, where the harness looks for libcef
+        run: go run ./tools/cefdl -debug -cache "${{ runner.temp }}/gomium-cef"
+
+      - name: Build refdebug harness
+        run: go build -tags refdebug -o build/harness-refdebug.exe ./cmd/harness
+
+      - name: Run scenarios
+        shell: bash
+        env:
+          # the debug libcef starts and loads pages several times slower
+          GOMIUM_RUN_SECONDS: "30"
+          GOMIUM_SCENARIO_GRACE: "120"
+        run: cmd/harness/refdebug.sh build/harness-refdebug.exe
+
+      - name: Upload scenario logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cef-debug-logs
+          path: build/refdebug/
