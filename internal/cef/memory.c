@@ -59,5 +59,5 @@ void initialize_cef_base_ref_counted(cef_base_ref_counted_t* base) {
     base->release = release;
     base->has_one_ref = has_one_ref;
     base->has_at_least_one_ref = has_at_least_one_ref;
-    goMemoryAddRef((void *) base);
+    goMemoryRegister((void *) base);
 }

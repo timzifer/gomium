@@ -166,6 +166,19 @@ func (c *cefApp) registerSchemeHandlerFactories(context *C.cef_request_context_t
 	}
 }
 
+// clearSchemeHandlerFactories unregisters the factories of the global request
+// context. Close calls it before cef_shutdown: CEF does not let go of them on
+// its own, and each one holds a reference on the app's factory. Contexts from
+// NewRequestContext drop theirs when they are destroyed.
+func (c *cefApp) clearSchemeHandlerFactories() {
+	if len(c.options.customSchemes) == 0 || c.schemeHandlerFactory == nil {
+		return
+	}
+	if C.cClearGlobalSchemeHandlerFactories() == 0 {
+		c.options.logger.Warn().Msg("could not clear the scheme handler factories")
+	}
+}
+
 //export goSchemeHandlerFactoryCreate
 func goSchemeHandlerFactoryCreate(
 	_ *C.cef_scheme_handler_factory_t,

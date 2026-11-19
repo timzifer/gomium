@@ -762,8 +762,12 @@ func main() {
 			}
 
 			// Close pumps the message loop itself while the browsers shut
-			// down - it must run on this (the cef_initialize) thread.
-			_ = app.Close()
+			// down - it must run on this (the cef_initialize) thread. In a
+			// -tags refdebug build it also reports structs that outlived CEF.
+			if closeErr := app.Close(); closeErr != nil {
+				logger.Error().Err(closeErr).Msg("close failed")
+				os.Exit(3)
+			}
 		}
 	}
 

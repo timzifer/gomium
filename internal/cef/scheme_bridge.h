@@ -12,6 +12,7 @@ int cSchemeRegistrarAdd(struct _cef_scheme_registrar_t* registrar, const char* n
 struct _cef_scheme_handler_factory_t* cSchemeHandlerFactoryCreate();
 void cSchemeHandlerFactoryFree(struct _cef_scheme_handler_factory_t* factory);
 
+int cClearGlobalSchemeHandlerFactories(void);
 int cRequestContextRegisterSchemeHandlerFactory(struct _cef_request_context_t* context,
                                                 const char* scheme,
                                                 struct _cef_scheme_handler_factory_t* factory);

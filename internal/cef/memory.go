@@ -37,11 +37,30 @@ func releaseBase(p unsafe.Pointer) {
 	}
 }
 
+// goMemoryRegister takes the first reference on a struct that
+// initialize_cef_base_ref_counted just set up.
+//
+//export goMemoryRegister
+func goMemoryRegister(it unsafe.Pointer) {
+	refCountLock.Lock()
+	defer refCountLock.Unlock()
+	if memoryBridge[it] != 0 {
+		ledgerFault("register of a live pointer", it)
+	}
+	memoryBridge[it] = 1
+	ledgerRegister(it)
+	memoryLogger.Trace().Str("ptr", fmt.Sprintf("0x%x", it)).Int("count", 1).Msg("+++")
+}
+
 //export goMemoryAddRef
 func goMemoryAddRef(it unsafe.Pointer) C.int {
 	refCountLock.Lock()
 	defer refCountLock.Unlock()
 	m := memoryBridge[it]
+	if m == 0 {
+		// a struct that was freed (or never ours): use after free
+		ledgerFault("add_ref on an unknown or freed pointer", it)
+	}
 	m++
 
 	memoryLogger.Trace().Str("ptr", fmt.Sprintf("0x%x", it)).Int("count", m).Msg("+++")
@@ -64,6 +83,7 @@ func goMemoryRelease(it unsafe.Pointer) C.int {
 		if m <= 0 {
 			memoryLogger.Trace().Str("ptr", fmt.Sprintf("0x%x", it)).Msg("###")
 			delete(memoryBridge, it)
+			ledgerForget(it)
 			// drop side registries keyed by the struct pointer before the
 			// memory is reused
 			forgetResourceServe(it)
@@ -77,6 +97,7 @@ func goMemoryRelease(it unsafe.Pointer) C.int {
 		return 0
 	}
 	memoryLogger.Warn().Str("ptr", fmt.Sprintf("0x%x", it)).Msg("release on unknown pointer")
+	ledgerFault("release on an unknown or freed pointer", it)
 	return 0
 }
 

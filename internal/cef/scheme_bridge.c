@@ -41,6 +41,17 @@ void cSchemeHandlerFactoryFree(struct _cef_scheme_handler_factory_t* factory) { 
     ((cef_base_ref_counted_t*)factory)->release((cef_base_ref_counted_t*)factory);
 }
 
+// cClearGlobalSchemeHandlerFactories drops the factories of the global
+// request context. CEF keeps them past cef_shutdown otherwise, together with
+// the reference each registration consumed.
+int cClearGlobalSchemeHandlerFactories(void) { DEBUG_CALL;
+    struct _cef_request_context_t* context = cef_request_context_get_global_context();
+    if (!context) return 0;
+    int cleared = context->clear_scheme_handler_factories(context);
+    ((cef_base_ref_counted_t*)context)->release((cef_base_ref_counted_t*)context);
+    return cleared;
+}
+
 // cRequestContextRegisterSchemeHandlerFactory hands the factory to one request
 // context. A NULL domain matches every host of a standard scheme. The call
 // consumes a reference on the factory - the caller adds one beforehand and
