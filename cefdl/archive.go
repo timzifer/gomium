@@ -82,8 +82,8 @@ func sha1File(name string) (string, error) {
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
-// extract unpacks the CEF archive. Release/ and Resources/ are flattened into
-// dest (that is the layout cgo and the running binary expect); include/ is
+// extract unpacks the CEF archive. binDir (Release/ or Debug/) and Resources/
+// are flattened into dest (that is the layout cgo and the running binary expect); include/ is
 // only unpacked when headerDest is set, because a gomium checkout carries
 // local header patches. The license notices from the archive root land in
 // dest as well (see licenseFiles) - they are part of what has to ship.
@@ -91,7 +91,7 @@ func sha1File(name string) (string, error) {
 // Regular files and symlinks are both unpacked: the macOS distribution ships
 // its library as a framework bundle, and a bundle without its symlinks is not
 // a bundle.
-func extract(archive, dest, headerDest string) (int, error) {
+func extract(archive, dest, headerDest, binDir string) (int, error) {
 	file, err := os.Open(archive)
 	if err != nil {
 		return 0, err
@@ -111,7 +111,7 @@ func extract(archive, dest, headerDest string) (int, error) {
 		if header.Typeflag != tar.TypeReg && header.Typeflag != tar.TypeSymlink {
 			continue
 		}
-		target, ok := mapPath(header.Name, dest, headerDest)
+		target, ok := mapPath(header.Name, dest, headerDest, binDir)
 		if !ok {
 			continue
 		}
@@ -133,7 +133,7 @@ func extract(archive, dest, headerDest string) (int, error) {
 		written++
 	}
 	if written == 0 {
-		return 0, fmt.Errorf("archive contained no Release/Resources files")
+		return 0, fmt.Errorf("archive contained no %s/Resources files", binDir)
 	}
 	return written, nil
 }
@@ -150,8 +150,9 @@ var licenseFiles = map[string]string{
 
 // mapPath turns an archive path such as
 // "cef_binary_151.../Release/libcef.dll" into a destination path, or reports
-// false when the entry is not wanted.
-func mapPath(name, dest, headerDest string) (string, bool) {
+// false when the entry is not wanted. binDir names the binary directory that
+// is unpacked, Release or Debug; the other one is skipped.
+func mapPath(name, dest, headerDest, binDir string) (string, bool) {
 	name = path.Clean(strings.ReplaceAll(name, `\`, "/"))
 	parts := strings.Split(name, "/")
 	if len(parts) == 2 {
@@ -170,7 +171,7 @@ func mapPath(name, dest, headerDest string) (string, bool) {
 		}
 	}
 	switch parts[1] {
-	case "Release", "Resources":
+	case binDir, "Resources":
 		return filepath.Join(append([]string{dest}, rest...)...), true
 	case "include":
 		if headerDest == "" {
