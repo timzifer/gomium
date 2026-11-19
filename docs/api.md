@@ -631,7 +631,9 @@ br.Cef().MainFrame().ExecuteJavaScriptWithResult(src, nil, 0,
 ### V8 lifecycle
 
 `app.AddV8Listener(gomium.V8ListenerFuncs(created, released))` — per frame on
-context creation (the place for JS injection, e.g. a localStorage shim).
+context creation (the place for JS injection, e.g. a localStorage shim). Both run
+synchronously on the renderer main thread, before any page script of the new context —
+do not block in them; browser and frame are only valid during the call.
 
 ---
 

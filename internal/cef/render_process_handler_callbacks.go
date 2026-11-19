@@ -53,12 +53,14 @@ func goOnRenderProcessContextCreated(ptr *C.cef_render_process_handler_t, cBrows
 	// bindings are in place before any page script of this context runs
 	installBindings(v8ctx, app.options.bindings)
 
-	// browser and frame references stay alive until the listeners returned
-	go func() {
-		defer releaseBase(unsafe.Pointer(cBrowser))
-		defer releaseBase(unsafe.Pointer(cFrame))
-		app.v8ContextCreated(cefBrowser{cBrowser}, cefFrame{cFrame})
-	}()
+	// The listeners run right here, on the renderer main thread, before any
+	// page script of the context: in the render process CEF accepts frame
+	// and browser calls only on that thread, so a listener on a goroutine
+	// could not even inject the script it is there for. Browser and frame
+	// are released once the listeners returned.
+	defer releaseBase(unsafe.Pointer(cBrowser))
+	defer releaseBase(unsafe.Pointer(cFrame))
+	app.v8ContextCreated(cefBrowser{cBrowser}, cefFrame{cFrame})
 }
 
 //export goOnRenderProcessContextReleased
@@ -83,11 +85,10 @@ func goOnRenderProcessContextReleased(ptr *C.cef_render_process_handler_t, cBrow
 		return
 	}
 
-	go func() {
-		defer releaseBase(unsafe.Pointer(cBrowser))
-		defer releaseBase(unsafe.Pointer(cFrame))
-		app.v8ContextReleased(cefBrowser{cBrowser}, cefFrame{cFrame})
-	}()
+	// on the renderer main thread, like the created listeners
+	defer releaseBase(unsafe.Pointer(cBrowser))
+	defer releaseBase(unsafe.Pointer(cFrame))
+	app.v8ContextReleased(cefBrowser{cBrowser}, cefFrame{cFrame})
 }
 
 //export goOnRenderProcessMessageReceived
