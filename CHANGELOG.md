@@ -18,6 +18,12 @@ fetched — they are listed for the record of what changed when.
   keeps its `cef_frame_t` reference alive across the shutdown. `Close` releases the
   references of such calls before `cef_shutdown`; their answers are dropped as before
   (#18).
+- Without `-tags refdebug`, an `add_ref` on a struct gomium had already freed brought it
+  back into the reference map, so the next `release` freed it a second time. It now
+  logs a warning and leaves the pointer alone (#17).
+- The final `release` of a gomium struct no longer clears the resource, cookie and PDF
+  side registries while holding the global reference-count lock (#17).
+- `SetMemoryLogger` raced with the reference-count callbacks (#17).
 
 ## [0.6.0] - 2026-11-19
 
