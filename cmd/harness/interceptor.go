@@ -8,14 +8,14 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/rs/zerolog"
 	"github.com/timzifer/gomium"
+	"log/slog"
 )
 
 // testInterceptor exercises the ResourceInterceptor API: every .pdf request
 // is answered with a generated PNG instead of hitting the network.
 type testInterceptor struct {
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
 func (t *testInterceptor) OnProtocolExecution(_ gomium.Browser, _ *url.URL) bool { return false }
@@ -28,7 +28,7 @@ func (t *testInterceptor) InterceptResource(_ gomium.Browser, requestUrl *url.UR
 	if !strings.HasSuffix(requestUrl.Path, ".pdf") {
 		return nil
 	}
-	t.logger.Info().Str("uri", requestUrl.String()).Msg("intercepting pdf request")
+	t.logger.Info("intercepting pdf request", "uri", requestUrl.String())
 
 	return func() *gomium.ResourceContent {
 		img := image.NewRGBA(image.Rect(0, 0, 64, 64))
@@ -44,10 +44,10 @@ func (t *testInterceptor) InterceptResource(_ gomium.Browser, requestUrl *url.UR
 
 		buffer := bytes.NewBuffer(nil)
 		if err := png.Encode(buffer, img); err != nil {
-			t.logger.Warn().Err(err).Msg("intercept: could not encode png")
+			t.logger.Warn("intercept: could not encode png", "err", err)
 			return nil
 		}
-		t.logger.Info().Int("bytes", buffer.Len()).Msg("intercept: serving generated png")
+		t.logger.Info("intercept: serving generated png", "bytes", buffer.Len())
 		return &gomium.ResourceContent{
 			Data:     buffer.Bytes(),
 			MimeType: "image/png",

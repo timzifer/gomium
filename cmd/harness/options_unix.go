@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/rs/zerolog"
 	"github.com/timzifer/gomium"
+	"log/slog"
 )
 
-func options(logger zerolog.Logger) []gomium.Option {
+func options(logger *slog.Logger) []gomium.Option {
 	// Dedicated profile directory: without a cache path CEF falls back to
 	// the shared default user-data-dir, and any other CEF app using that
 	// default holds the Chromium process singleton - cef_initialize then

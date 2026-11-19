@@ -502,7 +502,7 @@ func runBindingCall(app *cefApp, c *client, request *bindingCallRequest, call Bi
 	guard := bindingGuardFor(app, c)
 	if guard == nil || !guard(call) {
 		if c != nil {
-			c.logger.Warn().Str("binding", request.Path).Str("origin", originOf(call.FrameURL)).Msg("binding call rejected")
+			c.logger.Warn("binding call rejected", "binding", request.Path, "origin", originOf(call.FrameURL))
 		}
 		response.Error = "binding call not permitted: " + request.Path
 		return

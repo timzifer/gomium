@@ -127,8 +127,7 @@ func goOnRegisterCustomSchemes(_ *C.cef_app_t, registrar *C.cef_scheme_registrar
 			// Not fatal for this process, but the scheme will not load
 			// anywhere - say so rather than leave a page failing with a bare
 			// ERR_UNKNOWN_URL_SCHEME.
-			app.options.logger.Error().Str("scheme", scheme.Name).
-				Msg("CEF refused the custom scheme registration")
+			app.options.logger.Error("CEF refused the custom scheme registration", "scheme", scheme.Name)
 		}
 	}
 }
@@ -160,8 +159,7 @@ func (c *cefApp) registerSchemeHandlerFactories(context *C.cef_request_context_t
 		C.free(unsafe.Pointer(name))
 
 		if registered == 0 {
-			c.options.logger.Error().Str("scheme", scheme.Name).
-				Msg("could not register the scheme handler factory")
+			c.options.logger.Error("could not register the scheme handler factory", "scheme", scheme.Name)
 		}
 	}
 }
@@ -175,7 +173,7 @@ func (c *cefApp) clearSchemeHandlerFactories() {
 		return
 	}
 	if C.cClearGlobalSchemeHandlerFactories() == 0 {
-		c.options.logger.Warn().Msg("could not clear the scheme handler factories")
+		c.options.logger.Warn("could not clear the scheme handler factories")
 	}
 }
 

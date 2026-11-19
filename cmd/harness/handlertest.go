@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
-	"github.com/rs/zerolog"
 	"github.com/timzifer/gomium"
+	"log/slog"
 )
 
 // GOMIUM_HANDLER_TEST=1 wires log-only handlers for focus, keyboard, file
@@ -15,67 +15,67 @@ import (
 
 func handlerTestEnabled() bool { return os.Getenv("GOMIUM_HANDLER_TEST") != "" }
 
-type testFocusHandler struct{ logger zerolog.Logger }
+type testFocusHandler struct{ logger *slog.Logger }
 
 func (h testFocusHandler) OnTakeFocus(_ gomium.Browser, next bool) {
-	h.logger.Info().Bool("next", next).Msg("handler-test: take focus")
+	h.logger.Info("handler-test: take focus", "next", next)
 }
 
 func (h testFocusHandler) OnSetFocus(_ gomium.Browser, source gomium.FocusSource) bool {
-	h.logger.Info().Int("source", int(source)).Msg("handler-test: set focus")
+	h.logger.Info("handler-test: set focus", "source", int(source))
 	return false
 }
 
 func (h testFocusHandler) OnGotFocus(_ gomium.Browser) {
-	h.logger.Info().Msg("handler-test: got focus")
+	h.logger.Info("handler-test: got focus")
 }
 
-type testKeyboardHandler struct{ logger zerolog.Logger }
+type testKeyboardHandler struct{ logger *slog.Logger }
 
 func (h testKeyboardHandler) OnPreKeyEvent(_ gomium.Browser, ev gomium.KeyboardEvent) (bool, bool) {
-	h.logger.Info().Int("type", int(ev.Type)).Int("wkc", ev.WindowsKeyCode).Uint32("mods", uint32(ev.Modifiers)).Msg("handler-test: pre key")
+	h.logger.Info("handler-test: pre key", "type", int(ev.Type), "wkc", ev.WindowsKeyCode, "mods", uint32(ev.Modifiers))
 	return false, false
 }
 
 func (h testKeyboardHandler) OnKeyEvent(_ gomium.Browser, ev gomium.KeyboardEvent) bool {
-	h.logger.Info().Int("type", int(ev.Type)).Int("wkc", ev.WindowsKeyCode).Msg("handler-test: key")
+	h.logger.Info("handler-test: key", "type", int(ev.Type), "wkc", ev.WindowsKeyCode)
 	return false
 }
 
-type testFileDialogHandler struct{ logger zerolog.Logger }
+type testFileDialogHandler struct{ logger *slog.Logger }
 
 func (h testFileDialogHandler) OnFileDialog(_ gomium.Browser, mode gomium.FileDialogMode, title, defaultFilePath string, acceptFilters []string, callback gomium.FileDialogCallback) bool {
-	h.logger.Info().Int("mode", int(mode)).Str("title", title).Strs("filters", acceptFilters).Msg("handler-test: file dialog")
+	h.logger.Info("handler-test: file dialog", "mode", int(mode), "title", title, "filters", acceptFilters)
 	go callback.Cancel()
 	return true
 }
 
-type testFrameHandler struct{ logger zerolog.Logger }
+type testFrameHandler struct{ logger *slog.Logger }
 
 func (h testFrameHandler) OnFrameCreated(_ gomium.Browser, _ gomium.CefFrame) {
-	h.logger.Info().Msg("handler-test: frame created")
+	h.logger.Info("handler-test: frame created")
 }
 
 func (h testFrameHandler) OnFrameDestroyed(_ gomium.Browser, _ gomium.CefFrame) {
-	h.logger.Info().Msg("handler-test: frame destroyed")
+	h.logger.Info("handler-test: frame destroyed")
 }
 
 func (h testFrameHandler) OnFrameAttached(_ gomium.Browser, _ gomium.CefFrame, reattached bool) {
-	h.logger.Info().Bool("reattached", reattached).Msg("handler-test: frame attached")
+	h.logger.Info("handler-test: frame attached", "reattached", reattached)
 }
 
 func (h testFrameHandler) OnFrameDetached(_ gomium.Browser, _ gomium.CefFrame) {
-	h.logger.Info().Msg("handler-test: frame detached")
+	h.logger.Info("handler-test: frame detached")
 }
 
 func (h testFrameHandler) OnMainFrameChanged(_ gomium.Browser, oldFrame, newFrame gomium.CefFrame) {
-	h.logger.Info().Bool("old_nil", oldFrame == nil).Bool("new_nil", newFrame == nil).Msg("handler-test: main frame changed")
+	h.logger.Info("handler-test: main frame changed", "old_nil", oldFrame == nil, "new_nil", newFrame == nil)
 }
 
-type testAuthHandler struct{ logger zerolog.Logger }
+type testAuthHandler struct{ logger *slog.Logger }
 
 func (h testAuthHandler) OnAuthCredentials(_ gomium.Browser, req gomium.AuthRequest, callback gomium.AuthCallback) gomium.AuthAction {
-	h.logger.Info().Str("host", req.Host).Int("port", req.Port).Str("realm", req.Realm).Str("scheme", req.Scheme).Bool("proxy", req.IsProxy).Msg("handler-test: auth challenge")
+	h.logger.Info("handler-test: auth challenge", "host", req.Host, "port", req.Port, "realm", req.Realm, "scheme", req.Scheme, "proxy", req.IsProxy)
 	if os.Getenv("GOMIUM_AUTH_TEST") == "" {
 		return gomium.AuthDefault
 	}

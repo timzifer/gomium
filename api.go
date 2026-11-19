@@ -1,10 +1,10 @@
 package gomium
 
 import (
-	"github.com/rs/zerolog"
 	cef "github.com/timzifer/gomium/internal/cef"
 	"image"
 	"image/draw"
+	"log/slog"
 	"net/url"
 	"time"
 )
@@ -90,9 +90,13 @@ func NewScrollEvent(x, y int, deltaX, deltaY int) Event {
 	return cef.NewScrollEvent(x, y, deltaX, deltaY)
 }
 
-func SetDebugLogger(zLogger zerolog.Logger) { cef.SetDebugLogger(zLogger) }
+// SetDebugLogger sets the logger of the C bridge tracing. nil switches it
+// off. Set it before Run.
+func SetDebugLogger(logger *slog.Logger) { cef.SetDebugLogger(logger) }
 
-func SetMemoryLogger(zLogger zerolog.Logger) { cef.SetMemoryLogger(zLogger) }
+// SetMemoryLogger sets the logger of the reference counting of gomium's own
+// CEF structs. It logs every operation at LevelTrace; nil switches it off.
+func SetMemoryLogger(logger *slog.Logger) { cef.SetMemoryLogger(logger) }
 
 func V8ListenerFuncs(created, released func(b CefBrowser, f CefFrame)) V8Listener {
 	return cef.V8ListenerFuncs(created, released)
@@ -306,7 +310,9 @@ func WithLocalesDirPath(path string) Option { return cef.WithLocalesDirPath(path
 
 func WithLogSeverity(severity LogSeverity) Option { return cef.WithLogSeverity(severity) }
 
-func WithLogger(logger zerolog.Logger) Option { return cef.WithLogger(logger) }
+// WithLogger sets the logger of the app and its clients. Without it, or with
+// nil, gomium does not log. The noisiest steps log at LevelTrace.
+func WithLogger(logger *slog.Logger) Option { return cef.WithLogger(logger) }
 
 func WithMessagePumpWorker(pumpWorker WorkerCallback) Option {
 	return cef.WithMessagePumpWorker(cef.WorkerCallback(pumpWorker))

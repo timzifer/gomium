@@ -6,6 +6,10 @@ import (
 
 // Constants of the binding, re-exported unchanged.
 
+// LevelTrace is the slog level below slog.LevelDebug that SetMemoryLogger,
+// SetDebugLogger and the noisiest app steps log at.
+const LevelTrace = cef.LevelTrace
+
 // CertificateAccept continues the load despite the invalid certificate.
 const CertificateAccept = cef.CertificateAccept
 

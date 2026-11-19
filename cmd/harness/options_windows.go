@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/rs/zerolog"
 	"github.com/timzifer/gomium"
+	"log/slog"
 )
 
-func options(logger zerolog.Logger) []gomium.Option {
+func options(logger *slog.Logger) []gomium.Option {
 	handle, err := gomium.GetModuleHandle(nil)
 	if err != nil {
 		panic(err)
@@ -35,7 +35,6 @@ func options(logger zerolog.Logger) []gomium.Option {
 		gomium.WithLogSeverity(gomium.LOGSEVERITY_VERBOSE),
 		gomium.WithCachePath(profileDir),
 		gomium.WithRemoteDebuggingPort(debugPort),
-		//gomium.WithV8Option(v8.WithLogger(logger.With().Str("type", "v8").Logger())),
 	}
 
 	// GOMIUM_MT_LOOP=1 mirrors the terminal app: CEF runs its own message

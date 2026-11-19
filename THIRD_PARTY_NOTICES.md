@@ -73,12 +73,9 @@ Resolved by the Go toolchain from `go.mod`, not vendored:
 
 | module | license |
 | --- | --- |
-| `github.com/rs/zerolog` | MIT |
 | `github.com/google/uuid` | BSD-3-Clause |
 | `github.com/davecgh/go-spew` | ISC |
 | `golang.org/x/sys` | BSD-3-Clause |
-| `github.com/mattn/go-colorable` (indirect) | MIT |
-| `github.com/mattn/go-isatty` (indirect) | MIT |
 
 Their license texts are in the respective modules; a binary built with them should
 carry those notices too.

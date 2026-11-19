@@ -1,22 +1,20 @@
 package cef
 
 import (
-	"github.com/rs/zerolog"
+	"log/slog"
 	"os"
 	"runtime"
 	"testing"
-	"time"
 )
 
 func TestNew(t *testing.T) {
 
 	runtime.LockOSThread()
 
-	writer := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}
-	logger := zerolog.New(writer).With().Timestamp().Stack().Logger()
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: LevelTrace}))
 
-	SetDebugLogger(logger.With().Str("type", "Debug").Logger())
-	SetMemoryLogger(logger.With().Str("type", "Memory").Logger())
+	SetDebugLogger(logger.With("type", "Debug"))
+	SetMemoryLogger(logger.With("type", "Memory"))
 
 	if app, err := New(); err != nil {
 		t.Fatal(err)
