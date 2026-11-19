@@ -12,6 +12,13 @@ fetched — they are listed for the record of what changed when.
 
 ## [Unreleased]
 
+### Fixed
+
+- A binding call still running when `CefApp.Close` reaches `cef_shutdown` no longer
+  keeps its `cef_frame_t` reference alive across the shutdown. `Close` releases the
+  references of such calls before `cef_shutdown`; their answers are dropped as before
+  (#18).
+
 ## [0.6.0] - 2026-11-19
 
 ### Added

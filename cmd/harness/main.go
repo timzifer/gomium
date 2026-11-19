@@ -807,6 +807,9 @@ app.ping().then(function (v) {
 if (!isFrame) {
   app.add(2, 3).then(function (v) { console.log("BINDING_ADD " + v); }, function (e) { console.log("BINDING_ADD_ERR " + e); });
   app.fail().then(function (v) { console.log("BINDING_FAIL_UNEXPECTED " + v); }, function (e) { console.log("BINDING_FAIL " + e); });
+  // never answers: the call is still running when the app closes, which
+  // must not keep its frame alive across cef_shutdown (#18)
+  app.hang().then(function (v) { console.log("BINDING_HANG_UNEXPECTED " + v); });
   var tc = performance.now();
   app.cookieCount().then(function (v) {
     console.log("BINDING_UIWAIT " + v + " ms=" + (performance.now() - tc).toFixed(1));

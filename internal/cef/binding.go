@@ -473,13 +473,17 @@ func handleBindingCallRequest(c *client, request *bindingCallRequest, frame cefF
 	}
 
 	// The caller releases its frame reference when the callback returns; the
-	// goroutine answers through this one.
-	addRefBase(unsafe.Pointer(frame.cStruct))
+	// goroutine answers through one of its own. Close releases it if the
+	// call is still running then (#18).
+	held := app.holdRef(unsafe.Pointer(frame.cStruct))
+	if held == nil {
+		return
+	}
 	go func() {
 		response := runBindingCall(app, c, request, call)
 		app.withCEF(func() {
 			_, _ = response.DispatchWith(frame, PidRenderer)
-			frame.Release()
+			app.releaseHeld(held)
 		})
 	}()
 }

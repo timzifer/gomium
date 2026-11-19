@@ -60,6 +60,8 @@ func bindingTestOptions() []gomium.Option {
 		gomium.WithBinding("app.ping", func() (string, error) { return "pong", nil }),
 		gomium.WithBinding("app.add", func(a, b float64) (float64, error) { return a + b, nil }),
 		gomium.WithBinding("app.fail", func() error { return errors.New("boom") }),
+		// blocks until the process exits - see the call in bindingPage
+		gomium.WithBinding("app.hang", func() error { select {} }),
 		// waits for a UI-thread callback itself: before bindings left the UI
 		// thread this blocked until the cookie manager's timeout
 		gomium.WithBinding("app.cookieCount", func() (int, error) {

@@ -68,6 +68,12 @@ type (
 		cefMu   sync.RWMutex
 		cefDown bool
 
+		// held are CEF references such goroutines still own (see holdRef).
+		// Close releases what is left before cef_shutdown, so a goroutine
+		// that comes back late does not keep CEF objects alive across it.
+		heldMu sync.Mutex
+		held   map[*heldRef]struct{}
+
 		workerWG sync.WaitGroup
 	}
 
@@ -194,6 +200,7 @@ func (c *cefApp) Close() error {
 
 	c.cefMu.Lock()
 	c.cefDown = true
+	c.releaseHeldRefs()
 	c.cefMu.Unlock()
 
 	if initialized {
@@ -476,13 +483,66 @@ func (c *cefApp) verifyAndConfigureLibrary() error {
 }
 
 // withCEF runs fn unless CEF has been shut down (or is being shut down). For
-// goroutines that finish late: a binding answer after Close is dropped, along
-// with the references it would release - they died with CEF.
+// goroutines that finish late: a binding answer after Close is dropped. The
+// references such a goroutine holds must be registered with holdRef - Close
+// releases them before cef_shutdown, fn must not touch them after that.
 func (c *cefApp) withCEF(fn func()) {
 	c.cefMu.RLock()
 	defer c.cefMu.RUnlock()
 	if !c.cefDown {
 		fn()
+	}
+}
+
+// heldRef is a CEF reference owned by a goroutine that outlives the callback
+// it was taken in.
+type heldRef struct {
+	ptr unsafe.Pointer
+}
+
+// holdRef takes a reference on p for a goroutine that releases it later via
+// releaseHeld inside withCEF. It returns nil, taking nothing, once CEF is down.
+func (c *cefApp) holdRef(p unsafe.Pointer) *heldRef {
+	c.cefMu.RLock()
+	defer c.cefMu.RUnlock()
+	if c.cefDown {
+		return nil
+	}
+	addRefBase(p)
+	h := &heldRef{ptr: p}
+	c.heldMu.Lock()
+	if c.held == nil {
+		c.held = make(map[*heldRef]struct{})
+	}
+	c.held[h] = struct{}{}
+	c.heldMu.Unlock()
+	return h
+}
+
+// releaseHeld drops a reference taken by holdRef. Must run inside withCEF; after
+// Close the reference is already gone and fn does not run.
+func (c *cefApp) releaseHeld(h *heldRef) {
+	c.heldMu.Lock()
+	_, ok := c.held[h]
+	delete(c.held, h)
+	c.heldMu.Unlock()
+	if ok {
+		releaseBase(h.ptr)
+	}
+}
+
+// releaseHeldRefs releases every reference still held by a late goroutine.
+// Called by Close under the cefMu write lock, before cef_shutdown.
+func (c *cefApp) releaseHeldRefs() {
+	c.heldMu.Lock()
+	held := c.held
+	c.held = nil
+	c.heldMu.Unlock()
+	for h := range held {
+		releaseBase(h.ptr)
+	}
+	if len(held) > 0 {
+		c.options.logger.Debug().Int("count", len(held)).Msg("released references of unfinished goroutines")
 	}
 }
 
