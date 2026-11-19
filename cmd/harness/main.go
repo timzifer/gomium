@@ -224,6 +224,9 @@ func main() {
 			// popupAttached hands the popup browser from Attach to the close step
 			popupAttached := make(chan gomium.Browser, 1)
 			clientOptions := []gomium.ClientOption{
+				// the 500 ms default is too tight for CEF's debug runtime on a
+				// cold CI runner (cef-debug workflow)
+				gomium.WithBrowserCreationTimeout(10 * time.Second),
 				gomium.WithBindingGuard(bindingTestGuard),
 				gomium.WithLifeSpanHandlerFuncs(
 					func() {
