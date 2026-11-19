@@ -3,6 +3,7 @@ package cef
 /*
 #include "render_process_handler_bridge.h"
 #include "browser_client_bridge.h"
+#include "v8.h"
 */
 import "C"
 import (
@@ -69,14 +70,22 @@ func goOnRenderProcessContextReleased(ptr *C.cef_render_process_handler_t, cBrow
 
 	frameIdentifier := cefFrame{cFrame}.Identifier()
 
+	// A frame's new context can be created before its old one is released;
+	// the entry then already holds the new context and must stay.
 	v8contextLock.Lock()
 	if stored, exists := v8contexts[frameIdentifier]; exists {
-		delete(v8contexts, frameIdentifier)
-		if stored != nil {
+		if stored == nil {
+			delete(v8contexts, frameIdentifier)
+		} else if C.v8context_is_same(stored.cStruct, v8ctx) != 0 {
+			delete(v8contexts, frameIdentifier)
 			releaseBase(unsafe.Pointer(stored.cStruct))
 		}
 	}
 	v8contextLock.Unlock()
+
+	// binding calls of this context that the browser never answered would
+	// hold their promise and the context forever
+	rejectBindingCallsOf(v8ctx)
 
 	app := getInstance()
 	if app == nil {

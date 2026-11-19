@@ -575,6 +575,23 @@ func rejectPromise(promise *C.cef_v8_value_t, message string) {
 	cefStringFree(text)
 }
 
+// rejectBindingCallsOf rejects and drops the pending binding calls made in
+// context. Runs on the renderer main thread while context is still valid.
+func rejectBindingCallsOf(context *C.cef_v8_context_t) {
+	pendingBindingCallsLock.Lock()
+	ids := make([]uuid.UUID, 0)
+	for id, pending := range pendingBindingCalls {
+		if C.v8context_is_same(pending.context, context) != 0 {
+			ids = append(ids, id)
+		}
+	}
+	pendingBindingCallsLock.Unlock()
+
+	for _, id := range ids {
+		rejectBindingCall(id, errors.New("binding call abandoned: the context was released"))
+	}
+}
+
 func takeBindingCall(id uuid.UUID) (pendingBindingCall, bool) {
 	pendingBindingCallsLock.Lock()
 	defer pendingBindingCallsLock.Unlock()

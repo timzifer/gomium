@@ -275,23 +275,24 @@ wait:
 			uw.run()
 		case <-timeout.C:
 			// detach the pending channel so goOnAfterCreated registers a
-			// late-arriving browser on its own, then check once more whether it
-			// arrived while we were detaching
+			// late-arriving browser on its own. If goOnAfterCreated has taken
+			// the channel already, it has registered our wrapper and is about
+			// to send - the browser is ours, wait for it.
 			c.Lock()
-			if c.pendingBrowser == pending {
+			claimed := c.pendingBrowser != pending
+			if !claimed {
 				c.pendingBrowser = nil
 				c.pendingNew = nil
 			}
 			c.Unlock()
 
-			select {
-			case browserPtr = <-pending:
+			if claimed {
+				browserPtr = <-pending
 				break wait
-			default:
-				err := errors.New("timed out while waiting for cef-browser")
-				c.logger.Error().Dur("duration", time.Since(when)).Dur("timeout", c.createTimeout).Err(err).Send()
-				return nil, err
 			}
+			err := errors.New("timed out while waiting for cef-browser")
+			c.logger.Error().Dur("duration", time.Since(when)).Dur("timeout", c.createTimeout).Err(err).Send()
+			return nil, err
 		}
 	}
 

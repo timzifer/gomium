@@ -65,7 +65,7 @@ running (e.g. the terminal app), `cef_initialize` of the second one fails with
 | `CefApp.Run(ctx)` | start the message loop |
 | `CefApp.NewClient(opts ...ClientOption) Client` | create a browser client |
 | `CefApp.AddV8Listener(l V8Listener)` | renderer: V8 context created/released |
-| `CefApp.Close()` | close browsers + `cef_shutdown`; pumps on its own, call on the init thread |
+| `CefApp.Close()` | close browsers + `cef_shutdown`; pumps on its own; with an external pump it returns an error off the init thread |
 | `IsSubprocess() bool` / `ExecuteSubprocess(opts...)` | helper process branch in `main()` |
 | `LoadLibcef(path string) error` | bind libcef at runtime (before anything else) |
 | `CEFVersion() string` | bound CEF version |

@@ -131,9 +131,12 @@ func (c *cefApp) AddV8Listener(listener V8Listener) {
 
 var (
 	CefAppAlreadyExistsErr = errors.New("cefApp already exists")
-	mtx                    sync.Mutex
-	instance               *cefApp
-	appRunning             bool
+	// errCloseOffUIThread: with an external message pump, Close must run on
+	// the thread that called cef_initialize (the one that runs the pump).
+	errCloseOffUIThread = errors.New("gomium: with an external message pump, Close must run on the thread that initialized CEF")
+	mtx                 sync.Mutex
+	instance            *cefApp
+	appRunning          bool
 )
 
 func (c *cefApp) Close() error {
@@ -142,8 +145,14 @@ func (c *cefApp) Close() error {
 		mtx.Unlock()
 		return nil
 	}
-	c.closed = true
 	initialized := c.initialized
+	// With an external message pump, Close pumps the loop and shuts CEF
+	// down - both only work on the thread that called cef_initialize.
+	if initialized && c.options.pumpWorker != nil && !CefCurrentlyOn(TidUI) {
+		mtx.Unlock()
+		return errCloseOffUIThread
+	}
+	c.closed = true
 	mtx.Unlock()
 
 	// Close all clients (and their browsers) while the message pump is still
