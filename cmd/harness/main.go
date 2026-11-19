@@ -156,13 +156,13 @@ func main() {
 		}
 	}
 	if err := gomium.LoadLibcef(libcefPath); err != nil {
-		fatal(logger, "", "err", err)
+		fatal(logger, err.Error())
 	}
 
 	// macOS only: CEF needs an NSApplication that speaks CefAppProtocol, and
 	// it has to exist before cef_initialize and before cef_execute_process.
 	if err := installMacApplication(); err != nil {
-		fatal(logger, "", "err", err)
+		fatal(logger, err.Error())
 	}
 
 	// CEF helper processes are new instances of this executable - hand them
@@ -170,7 +170,7 @@ func main() {
 	// applications must structure their main().
 	if gomium.IsSubprocess() {
 		if err := gomium.ExecuteSubprocess(append(append(options(logger), schemeTestOptions()...), bindingTestOptions()...)...); err != nil {
-			fatal(logger, "", "err", err)
+			fatal(logger, err.Error())
 		}
 		return
 	}
@@ -182,7 +182,7 @@ func main() {
 	//	gomium.SetMemoryLogger(logger.With("type", "Memory"))
 
 	if app, err := gomium.New(append(append(options(logger), schemeTestOptions()...), bindingTestOptions()...)...); err != nil {
-		fatal(logger, "", "err", err)
+		fatal(logger, err.Error())
 	} else {
 		ctx, cancel := context.WithCancel(context.Background())
 
