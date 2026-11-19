@@ -19,7 +19,11 @@ var (
 	refCountLock sync.Mutex
 )
 
+// SetMemoryLogger sets the logger of the reference counting. The goMemory*
+// callbacks read it under refCountLock, so it is written under it too.
 func SetMemoryLogger(zLogger zerolog.Logger) {
+	refCountLock.Lock()
+	defer refCountLock.Unlock()
 	memoryLogger = zLogger
 }
 
@@ -58,8 +62,11 @@ func goMemoryAddRef(it unsafe.Pointer) C.int {
 	defer refCountLock.Unlock()
 	m := memoryBridge[it]
 	if m == 0 {
-		// a struct that was freed (or never ours): use after free
+		// a struct that was freed (or never ours): use after free. Do not
+		// bring it back - a later release would free it a second time.
+		memoryLogger.Warn().Str("ptr", fmt.Sprintf("0x%x", it)).Msg("add_ref on unknown pointer")
 		ledgerFault("add_ref on an unknown or freed pointer", it)
+		return 0
 	}
 	m++
 
@@ -75,30 +82,43 @@ func goMemoryAddRef(it unsafe.Pointer) C.int {
 //
 //export goMemoryRelease
 func goMemoryRelease(it unsafe.Pointer) C.int {
+	if !releaseCounted(it) {
+		return 0
+	}
+	// The last reference is gone. Drop the side registries keyed by the
+	// struct pointer outside refCountLock - they take locks of their own,
+	// and holding refCountLock across them would fix a lock order that any
+	// release under one of those locks would invert. The address cannot be
+	// reused before C.free below, so no new entry can collide.
+	forgetResourceServe(it)
+	forgetCookiePending(it)
+	forgetPdfPending(it)
+	C.free(it)
+	return 1
+}
+
+// releaseCounted drops one reference. It reports true when that was the last
+// one; the pointer is then gone from memoryBridge and the caller frees it.
+func releaseCounted(it unsafe.Pointer) bool {
 	refCountLock.Lock()
 	defer refCountLock.Unlock()
 
-	if m, ok := memoryBridge[it]; ok {
-		m--
-		if m <= 0 {
-			memoryLogger.Trace().Str("ptr", fmt.Sprintf("0x%x", it)).Msg("###")
-			delete(memoryBridge, it)
-			ledgerForget(it)
-			// drop side registries keyed by the struct pointer before the
-			// memory is reused
-			forgetResourceServe(it)
-			forgetCookiePending(it)
-			forgetPdfPending(it)
-			C.free(it)
-			return 1
-		}
-		memoryLogger.Trace().Str("ptr", fmt.Sprintf("0x%x", it)).Int("count", m).Msg("---")
-		memoryBridge[it] = m
-		return 0
+	m, ok := memoryBridge[it]
+	if !ok {
+		memoryLogger.Warn().Str("ptr", fmt.Sprintf("0x%x", it)).Msg("release on unknown pointer")
+		ledgerFault("release on an unknown or freed pointer", it)
+		return false
 	}
-	memoryLogger.Warn().Str("ptr", fmt.Sprintf("0x%x", it)).Msg("release on unknown pointer")
-	ledgerFault("release on an unknown or freed pointer", it)
-	return 0
+	m--
+	if m <= 0 {
+		memoryLogger.Trace().Str("ptr", fmt.Sprintf("0x%x", it)).Msg("###")
+		delete(memoryBridge, it)
+		ledgerForget(it)
+		return true
+	}
+	memoryLogger.Trace().Str("ptr", fmt.Sprintf("0x%x", it)).Int("count", m).Msg("---")
+	memoryBridge[it] = m
+	return false
 }
 
 //export goMemoryHasOneRef
