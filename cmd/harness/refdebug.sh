@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Runs harness scenarios against a -tags refdebug build and fails when one of
 # them exits non-zero, panics, or reports a refdebug finding (a reference
-# operation on a freed struct, or structs that outlived CEF).
+# operation on a freed struct, or structs that outlived CEF) - or never got a
+# browser up, which would check nothing.
 #
 #   go build -tags refdebug -o build/harness-refdebug.exe ./cmd/harness
 #   cmd/harness/refdebug.sh build/harness-refdebug.exe [scenario ...]
@@ -34,8 +35,10 @@ for scenario in "$@"; do
 	env "${vars[@]}" timeout $((seconds + 60)) "$harness" >"$log" 2>&1
 	code=$?
 	findings=$(grep -a -c -E 'refdebug:|^panic:|fatal error:' "$log")
-	if [ "$code" -ne 0 ] || [ "$findings" -ne 0 ]; then
-		echo "FAIL $scenario (exit $code, $findings findings) - $log"
+	# a run that never got a browser checks nothing
+	browsers=$(grep -a -c 'browser received' "$log")
+	if [ "$code" -ne 0 ] || [ "$findings" -ne 0 ] || [ "$browsers" -eq 0 ]; then
+		echo "FAIL $scenario (exit $code, $findings findings, $browsers browsers) - $log"
 		grep -a -E -A40 'refdebug:|^panic:|fatal error:' "$log" | head -80
 		status=1
 	else
