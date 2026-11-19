@@ -61,6 +61,10 @@ fetched — they are listed for the record of what changed when.
 - The final `release` of a gomium struct no longer clears the resource, cookie and PDF
   side registries while holding the global reference-count lock (#17).
 - `SetMemoryLogger` raced with the reference-count callbacks (#17).
+- Linux: browsers start. Chromium's zygote is the Go executable and refuses to fork a
+  multi-threaded process, so every GPU and renderer launch failed and the browser
+  exited with "GPU process isn't usable"; gomium now appends `--no-zygote` on Linux.
+  A `refdebug (linux)` CI job runs the harness scenarios on Ubuntu (#24).
 
 ## [0.6.0] - 2026-11-19
 

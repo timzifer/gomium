@@ -37,14 +37,17 @@ Verified on 156.0.27 (Windows), live in `cmd/harness` and in a Fyne host applica
 - reference counting: the offscreen scenarios run clean under the `refdebug` ledger
   (in CI, on every pull request) and against CEF's debug runtime (nightly)
 
-Not verified yet: the focus and frame handlers, and anything on macOS or Linux against
-156.0.27 — the platform headers (`cef_types_linux.h` / `cef_types_mac.h`) are identical
-to the 156.0.27 distributions, but no build or run was done there.
+Linux/amd64 runs the same offscreen scenarios in CI (`refdebug (linux)`, Ubuntu under
+`xvfb-run`): bindings and their guard, custom schemes, popups, cookies, DevTools, both
+render handlers.
+
+Not verified yet: the focus and frame handlers, macOS against 156.0.27, and Linux on
+arm64 or on a desktop session.
 
 > **Status: pre-release (`v0.x`).** The API is not stable yet — expect breaking changes
 > between minor versions; [`CHANGELOG.md`](CHANGELOG.md) lists them per release. Releases
 > are tagged (`v0.5.0` onwards), so consumers can pin a version instead of a commit.
-> Windows and macOS/arm64 have both started a real browser; Linux has never run one.
+> Windows, macOS/arm64 and Linux/amd64 (offscreen, in CI) have all run a real browser.
 > See [Known limitations](#known-limitations).
 
 ## Requirements
@@ -310,12 +313,13 @@ CEF's debug runtime nightly.
 | --- | --- | --- |
 | windows/amd64 | yes | yes |
 | windows/arm64 | trampolines are ELF/Mach-O only — PE-COFF arm64 stops at an `#error` | no |
-| linux/amd64, linux/arm64 | yes | `LoadLibcef` (`dlopen`) and windowless rendering are implemented; not run on real hardware yet |
+| linux/amd64 | yes | offscreen only — the harness scenarios run in CI |
+| linux/arm64 | yes | same code path as amd64, not run yet |
 | darwin/arm64 | yes | yes — offscreen and windowed, out of a bundle built by `tools/cefbundle` |
 | darwin/amd64 | yes | same code path as arm64, but only arm64 has been run |
 
-Linux is written but unverified: it compiles and the generated assembly assembles, but
-no browser has been started on it.
+Linux is offscreen-only. It runs without Chromium's zygote (`--no-zygote`): the zygote
+would be the Go executable, and Chromium refuses to fork a multi-threaded process.
 
 ### Platform guides
 
@@ -327,21 +331,21 @@ platform:
 | --- | --- |
 | **[docs/windows.md](docs/windows.md)** | module handle, multi-threaded vs external message loop, DLL search path, which files from `Release\` to ship |
 | **[docs/osx.md](docs/osx.md)** | `CefAppProtocol`, the AppKit event queue, `.app` bundling with `tools/cefbundle`, codesigning |
-| **[docs/linux.md](docs/linux.md)** | `dlopen` loading, offscreen-only status, which files to ship — **unverified** |
+| **[docs/linux.md](docs/linux.md)** | `dlopen` loading, offscreen-only status, no zygote, which files to ship |
 
 The three obligations that differ most: Windows wants a module handle and can run
 CEF's own loop thread; macOS needs an `NSApplication` implementing `CefAppProtocol`, an
 `.app` bundle with helper bundles, and its own event queue drained on every pump tick;
-Linux is offscreen-only and has never been run.
+Linux is offscreen-only and runs without a zygote.
 
 ## Known limitations
 
 - **Tests.** Unit tests cover the shim, the facade and the version pin; value
-  conversion and process messages have none. CEF itself runs in CI only in the
-  `refdebug (windows)` job (offscreen scenarios) and the nightly debug-runtime run —
-  windowed browsers, macOS and Linux need `cmd/harness` by hand.
+  conversion and process messages have none. CEF itself runs in CI in the
+  `refdebug (windows)` and `refdebug (linux)` jobs (offscreen scenarios) and the
+  nightly debug-runtime run — windowed browsers and macOS need `cmd/harness` by hand.
 - **Race detector.** No `-race` run of the harness scenarios yet.
-- **Linux** has never started a browser.
+- **Linux** is verified offscreen on amd64 in CI only, not on a desktop session or arm64.
 - **No sandbox.** `no_sandbox = 1` is hard-coded; `cef_sandbox.lib`, macOS entitlements
   and the setuid `chrome-sandbox` do not fit the runtime-binding design as it stands.
 - **Code signing** is ad-hoc only (`cefbundle`); no Developer ID, notarization or

@@ -1,13 +1,20 @@
 # gomium on Linux
 
-> **Status: unverified.** linux/amd64 and linux/arm64 compile, the trampolines
-> assemble, and `LoadLibcef` is implemented — but **no browser has ever been started
-> on Linux**. Treat this document as "what the code is meant to do", not as a report.
-> Offscreen rendering is the only mode: `WithWindow` returns
-> `windowed browsers are only implemented on windows and macos`.
+> **Status: offscreen, verified on linux/amd64 in CI.** The `refdebug (linux)` job runs
+> every harness scenario on Ubuntu under `xvfb-run` against CEF 156 — bindings, custom
+> schemes, popups, cookies, DevTools, both render handlers — with the refdebug ledger.
+> linux/arm64 compiles but has not run. Offscreen rendering is the only mode:
+> `WithWindow` returns `windowed browsers are only implemented on windows and macos`.
 
-If you run it, the interesting failure surfaces are the message pump, the helper
-process launch, and whether OSR works headless.
+### No zygote
+
+On Linux Chromium normally spawns renderers and the GPU process from a *zygote*, a
+pre-initialised helper that forks. With gomium the zygote is the Go executable, and the
+Go runtime always runs several threads; Chromium refuses to fork a multi-threaded
+process. The child launches fail (`GPU process launch failed: error_code=1002`) and
+the browser exits with `GPU process isn't usable`. gomium therefore always appends
+`--no-zygote` on Linux, and the browser process starts every child by fork+exec. That
+needs `--no-sandbox`, which gomium sets anyway (`no_sandbox = 1`).
 
 ---
 
@@ -16,8 +23,10 @@ process launch, and whether OSR works headless.
 - gcc or clang with cgo, and `libdl` (linked via `#cgo linux LDFLAGS: -ldl`).
 - x86-64 or arm64 — `internal/cefshim/cef_shim.S` has an ELF arm64 block alongside the amd64 one.
 - The shared libraries Chromium expects at runtime (X11/GTK stack). CEF's distribution
-  does not carry them; a headless container usually needs `libnss3`, `libatk-1.0`,
-  `libgbm`, `libasound2` and friends installed.
+  does not carry them. On Ubuntu 24.04 the CI job installs `xvfb libnss3 libgbm1
+  libasound2t64 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libxkbcommon0
+  libxcomposite1 libxdamage1 libxrandr2 libpango-1.0-0 libcairo2`
+  (`.github/workflows/ci.yml`); without a display server run under `xvfb-run -a`.
 
 ## Getting the runtime
 
