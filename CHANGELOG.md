@@ -51,6 +51,7 @@ fetched — they are listed for the record of what changed when.
     `ProcessMessage`, `Dispatcher`, `DispatchWith`, and `SendProcessMessage` on
     `CefBrowser` / `CefFrame`. A caller could not build a `ProcessMessage`, so none of
     it was usable outside the binding.
+- The `github.com/davecgh/go-spew` dependency; only the harness used it (#27).
 
 ### Fixed
 

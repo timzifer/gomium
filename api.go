@@ -14,7 +14,7 @@ import (
 // comments survive into go doc, and so that they cannot be reassigned.
 
 // CEFVersion returns the full CEF version string this binary was compiled
-// against, e.g. "151.3.14+g5d67476+chromium-151.0.7922.72". It reflects the
+// against, e.g. "156.0.27+ga10dae3+chromium-156.0.8078.88". It reflects the
 // headers used at build time and does not touch the loaded library, so it is
 // safe to call at any point - including before Run and against a mismatched
 // libcef.

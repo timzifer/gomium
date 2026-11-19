@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/timzifer/gomium"
 	"image"
 	"image/jpeg"
@@ -236,11 +235,11 @@ func main() {
 				gomium.WithBindingGuard(bindingTestGuard),
 				gomium.WithLifeSpanHandlerFuncs(
 					func() {
-						spew.Dump("afterCreated")
+						logger.Debug("life span: afterCreated")
 					}, func() {
-						spew.Dump("onBeforeClose")
+						logger.Debug("life span: onBeforeClose")
 					}, func() bool {
-						spew.Dump("doClose")
+						logger.Debug("life span: doClose")
 						// false lets CEF proceed with destroying the browser
 						return false
 					}), gomium.WithDisplayHandlerFuncs(func(b gomium.Browser, s string) {

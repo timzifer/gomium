@@ -340,10 +340,11 @@ Linux is offscreen-only and runs without a zygote.
 
 ## Known limitations
 
-- **Tests.** Unit tests cover the shim, the facade and the version pin; value
-  conversion and process messages have none. CEF itself runs in CI in the
-  `refdebug (windows)` and `refdebug (linux)` jobs (offscreen scenarios) and the
-  nightly debug-runtime run — windowed browsers and macOS need `cmd/harness` by hand.
+- **Tests.** Unit tests cover the shim, the facade, the version pin, binding argument
+  and result conversion, the process-message payloads, DevTools and the OSR render
+  handlers. CEF itself runs in CI in the `refdebug (windows)` and `refdebug (linux)`
+  jobs (offscreen scenarios) and the nightly debug-runtime run — windowed browsers and
+  macOS need `cmd/harness` by hand.
 - **Race detector.** Unit tests run with `-race` on every pull request (Linux); the
   harness scenarios run as a `-race` build nightly (`race.yml`, Linux only).
 - **Linux** is verified offscreen on amd64 in CI only, not on a desktop session or arm64.

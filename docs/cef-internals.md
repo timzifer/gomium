@@ -90,9 +90,9 @@ use a real `cef_resource_handler_t` — gomium exposes that as `ResourceIntercep
 
 `internal/cef/app.go` compares the header hash against the loaded DLL's `cef_api_hash()` on `Run()`
 and aborts with a clear message on mismatch — the alternative is a silent ABI mismatch
-that corrupts memory. Currently unpinned
-(`CEF_API_VERSION_EXPERIMENTAL`); see [upgrading-cef.md](upgrading-cef.md) for why
-pinning it is worth doing before the next upgrade.
+that corrupts memory. The client API is pinned to `CEF_API_VERSION=15600`
+(`internal/cef/cgoflags.go`); `cAppConfigureApiVersion` passes that version to
+`cef_api_hash`. See [upgrading-cef.md](upgrading-cef.md), section 5.
 
 ## 9. Behaviour that changed and cannot be restored
 

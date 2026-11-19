@@ -63,181 +63,54 @@ const CookieSameSiteStrictMode = cef.CookieSameSiteStrictMode
 
 const CookieSameSiteUnspecified = cef.CookieSameSiteUnspecified
 
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeALIAS = cef.CursorTypeALIAS
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeCELL = cef.CursorTypeCELL
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeCOLUMNRESIZE = cef.CursorTypeCOLUMNRESIZE
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeCONTEXTMENU = cef.CursorTypeCONTEXTMENU
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeCOPY = cef.CursorTypeCOPY
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeCROSS = cef.CursorTypeCROSS
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeCUSTOM = cef.CursorTypeCUSTOM
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeEASTPANNING = cef.CursorTypeEASTPANNING
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeEASTRESIZE = cef.CursorTypeEASTRESIZE
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeEASTWESTRESIZE = cef.CursorTypeEASTWESTRESIZE
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeGRAB = cef.CursorTypeGRAB
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeGRABBING = cef.CursorTypeGRABBING
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeHAND = cef.CursorTypeHAND
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeHELP = cef.CursorTypeHELP
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeIBEAM = cef.CursorTypeIBEAM
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeMIDDLEPANNING = cef.CursorTypeMIDDLEPANNING
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeMOVE = cef.CursorTypeMOVE
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeNODROP = cef.CursorTypeNODROP
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeNONE = cef.CursorTypeNONE
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeNORTHEASTPANNING = cef.CursorTypeNORTHEASTPANNING
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeNORTHEASTRESIZE = cef.CursorTypeNORTHEASTRESIZE
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeNORTHEASTSOUTHWESTRESIZE = cef.CursorTypeNORTHEASTSOUTHWESTRESIZE
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeNORTHPANNING = cef.CursorTypeNORTHPANNING
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeNORTHRESIZE = cef.CursorTypeNORTHRESIZE
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeNORTHSOUTHRESIZE = cef.CursorTypeNORTHSOUTHRESIZE
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeNORTHWESTPANNING = cef.CursorTypeNORTHWESTPANNING
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeNORTHWESTRESIZE = cef.CursorTypeNORTHWESTRESIZE
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeNORTHWESTSOUTHEASTRESIZE = cef.CursorTypeNORTHWESTSOUTHEASTRESIZE
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeNOTALLOWED = cef.CursorTypeNOTALLOWED
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypePOINTER = cef.CursorTypePOINTER
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypePROGRESS = cef.CursorTypePROGRESS
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeROWRESIZE = cef.CursorTypeROWRESIZE
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeSOUTHEASTPANNING = cef.CursorTypeSOUTHEASTPANNING
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeSOUTHEASTRESIZE = cef.CursorTypeSOUTHEASTRESIZE
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeSOUTHPANNING = cef.CursorTypeSOUTHPANNING
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeSOUTHRESIZE = cef.CursorTypeSOUTHRESIZE
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeSOUTHWESTPANNING = cef.CursorTypeSOUTHWESTPANNING
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeSOUTHWESTRESIZE = cef.CursorTypeSOUTHWESTRESIZE
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeVERTICALTEXT = cef.CursorTypeVERTICALTEXT
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeWAIT = cef.CursorTypeWAIT
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeWESTPANNING = cef.CursorTypeWESTPANNING
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeWESTRESIZE = cef.CursorTypeWESTRESIZE
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeZOOMIN = cef.CursorTypeZOOMIN
-
-// Explicitly mapped to cef_cursor_type_t so inserted enum values in future
-// CEF versions cannot silently shift the constants.
-const CursorTypeZOOMOUT = cef.CursorTypeZOOMOUT
+// CursorType values, explicitly mapped to cef_cursor_type_t so inserted enum
+// values in future CEF versions cannot silently shift the constants.
+const (
+	CursorTypeALIAS                    = cef.CursorTypeALIAS
+	CursorTypeCELL                     = cef.CursorTypeCELL
+	CursorTypeCOLUMNRESIZE             = cef.CursorTypeCOLUMNRESIZE
+	CursorTypeCONTEXTMENU              = cef.CursorTypeCONTEXTMENU
+	CursorTypeCOPY                     = cef.CursorTypeCOPY
+	CursorTypeCROSS                    = cef.CursorTypeCROSS
+	CursorTypeCUSTOM                   = cef.CursorTypeCUSTOM
+	CursorTypeEASTPANNING              = cef.CursorTypeEASTPANNING
+	CursorTypeEASTRESIZE               = cef.CursorTypeEASTRESIZE
+	CursorTypeEASTWESTRESIZE           = cef.CursorTypeEASTWESTRESIZE
+	CursorTypeGRAB                     = cef.CursorTypeGRAB
+	CursorTypeGRABBING                 = cef.CursorTypeGRABBING
+	CursorTypeHAND                     = cef.CursorTypeHAND
+	CursorTypeHELP                     = cef.CursorTypeHELP
+	CursorTypeIBEAM                    = cef.CursorTypeIBEAM
+	CursorTypeMIDDLEPANNING            = cef.CursorTypeMIDDLEPANNING
+	CursorTypeMOVE                     = cef.CursorTypeMOVE
+	CursorTypeNODROP                   = cef.CursorTypeNODROP
+	CursorTypeNONE                     = cef.CursorTypeNONE
+	CursorTypeNORTHEASTPANNING         = cef.CursorTypeNORTHEASTPANNING
+	CursorTypeNORTHEASTRESIZE          = cef.CursorTypeNORTHEASTRESIZE
+	CursorTypeNORTHEASTSOUTHWESTRESIZE = cef.CursorTypeNORTHEASTSOUTHWESTRESIZE
+	CursorTypeNORTHPANNING             = cef.CursorTypeNORTHPANNING
+	CursorTypeNORTHRESIZE              = cef.CursorTypeNORTHRESIZE
+	CursorTypeNORTHSOUTHRESIZE         = cef.CursorTypeNORTHSOUTHRESIZE
+	CursorTypeNORTHWESTPANNING         = cef.CursorTypeNORTHWESTPANNING
+	CursorTypeNORTHWESTRESIZE          = cef.CursorTypeNORTHWESTRESIZE
+	CursorTypeNORTHWESTSOUTHEASTRESIZE = cef.CursorTypeNORTHWESTSOUTHEASTRESIZE
+	CursorTypeNOTALLOWED               = cef.CursorTypeNOTALLOWED
+	CursorTypePOINTER                  = cef.CursorTypePOINTER
+	CursorTypePROGRESS                 = cef.CursorTypePROGRESS
+	CursorTypeROWRESIZE                = cef.CursorTypeROWRESIZE
+	CursorTypeSOUTHEASTPANNING         = cef.CursorTypeSOUTHEASTPANNING
+	CursorTypeSOUTHEASTRESIZE          = cef.CursorTypeSOUTHEASTRESIZE
+	CursorTypeSOUTHPANNING             = cef.CursorTypeSOUTHPANNING
+	CursorTypeSOUTHRESIZE              = cef.CursorTypeSOUTHRESIZE
+	CursorTypeSOUTHWESTPANNING         = cef.CursorTypeSOUTHWESTPANNING
+	CursorTypeSOUTHWESTRESIZE          = cef.CursorTypeSOUTHWESTRESIZE
+	CursorTypeVERTICALTEXT             = cef.CursorTypeVERTICALTEXT
+	CursorTypeWAIT                     = cef.CursorTypeWAIT
+	CursorTypeWESTPANNING              = cef.CursorTypeWESTPANNING
+	CursorTypeWESTRESIZE               = cef.CursorTypeWESTRESIZE
+	CursorTypeZOOMIN                   = cef.CursorTypeZOOMIN
+	CursorTypeZOOMOUT                  = cef.CursorTypeZOOMOUT
+)
 
 // JsDialogDefault leaves the dialog to CEF's default implementation.
 const JsDialogDefault = cef.JsDialogDefault
