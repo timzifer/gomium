@@ -344,7 +344,8 @@ Linux is offscreen-only and runs without a zygote.
   conversion and process messages have none. CEF itself runs in CI in the
   `refdebug (windows)` and `refdebug (linux)` jobs (offscreen scenarios) and the
   nightly debug-runtime run — windowed browsers and macOS need `cmd/harness` by hand.
-- **Race detector.** No `-race` run of the harness scenarios yet.
+- **Race detector.** Unit tests run with `-race` on every pull request (Linux); the
+  harness scenarios run as a `-race` build nightly (`race.yml`, Linux only).
 - **Linux** is verified offscreen on amd64 in CI only, not on a desktop session or arm64.
 - **No sandbox.** `no_sandbox = 1` is hard-coded; `cef_sandbox.lib`, macOS entitlements
   and the setuid `chrome-sandbox` do not fit the runtime-binding design as it stands.

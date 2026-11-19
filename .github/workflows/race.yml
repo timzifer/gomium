@@ -1,0 +1,73 @@
+name: Race
+
+# The harness scenarios built with -race, on Linux. The binding is full of
+# mutexes, cgo callbacks arriving on CEF threads and goroutines started per
+# callback; the unit tests cover only the pure-Go parts of that. Every process
+# of a scenario - browser, renderer, GPU, utility - is the same race-enabled
+# executable, so a race in a helper process shows up in the scenario log as
+# well; refdebug.sh fails a scenario on "WARNING: DATA RACE".
+#
+# Nightly rather than per PR: a race build is several times slower and needs
+# far more memory per process. Run it by hand on PRs that touch locking.
+
+on:
+  schedule:
+    - cron: "47 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CGO_ENABLED: "1"
+
+jobs:
+  scenarios:
+    name: scenarios (linux, -race)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install Chromium runtime libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb libnss3 libgbm1 \
+            libasound2t64 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 \
+            libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libpango-1.0-0 libcairo2
+
+      - name: Cache CEF distribution
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/gomium-cef
+          key: cef-linux64-${{ hashFiles('cefdl/cef.version') }}
+
+      - name: Fetch CEF runtime
+        run: go run ./tools/cefdl -cache "${{ runner.temp }}/gomium-cef"
+
+      - name: Build race harness
+        run: go build -race -tags refdebug -o build/harness-race ./cmd/harness
+
+      - name: Run scenarios
+        env:
+          # report every race, keep going, and let the scenario's exit code
+          # carry the verdict
+          GORACE: halt_on_error=0 exitcode=66
+          REFDEBUG_LOGS: build/race
+          GOMIUM_SCENARIO_GRACE: "120"
+        run: xvfb-run -a cmd/harness/refdebug.sh build/harness-race
+
+      - name: Upload scenario logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: race-logs
+          path: build/race/

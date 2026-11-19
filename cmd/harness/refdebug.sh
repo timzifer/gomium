@@ -28,7 +28,7 @@ seconds=${GOMIUM_RUN_SECONDS:-12}
 logs=${REFDEBUG_LOGS:-build/refdebug}
 cef_log=${CEF_DEBUG_LOG:-$(dirname "$harness")/debug.log}
 mkdir -p "$logs" shots
-findings_re='refdebug:|^panic:|fatal error:|:FATAL:|Check failed'
+findings_re='refdebug:|^panic:|fatal error:|:FATAL:|Check failed|WARNING: DATA RACE'
 
 status=0
 for scenario in "$@"; do
