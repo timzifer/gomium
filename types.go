@@ -135,12 +135,6 @@ type AuthCallback = cef.AuthCallback
 // AuthAction tells CEF how an AuthHandler treated a challenge.
 type AuthAction = cef.AuthAction
 
-// AuthHandler answers HTTP and proxy auth challenges with an own login form.
-type AuthHandler = cef.AuthHandler
-
-// FrameHandler observes frame lifecycle. Frames are valid only during a call.
-type FrameHandler = cef.FrameHandler
-
 // ScreenInfo describes the screen a render handler's view lives on (DIP).
 type ScreenInfo = cef.ScreenInfo
 
@@ -173,10 +167,6 @@ type Option = cef.Option
 // BindingGuard.
 type BindingCall = cef.BindingCall
 
-// BindingGuard decides whether a binding call may run. It is set per browser
-// with WithBindingGuard. false rejects the call.
-type BindingGuard = cef.BindingGuard
-
 // CustomScheme is a scheme the embedder serves itself, registered with
 // WithCustomScheme and answered from a ResourceInterceptor.
 type CustomScheme = cef.CustomScheme
@@ -190,9 +180,6 @@ type PopupRequest = cef.PopupRequest
 
 // PopupView is the offscreen view of a popup (see WithPopupView).
 type PopupView = cef.PopupView
-
-// PopupViewFactory builds the PopupView for a popup (see WithPopupView).
-type PopupViewFactory = cef.PopupViewFactory
 
 // Request wraps a cef_request_t. It is only valid during the callback it was
 // handed to (for OnBeforeResourceLoad with ResourceLoadContinueAsync: until

@@ -20,6 +20,10 @@ fetched — they are listed for the record of what changed when.
   new `LevelTrace` (below `slog.LevelDebug`). zerolog is no longer a dependency. The
   reference-count trace builds its attributes only when the logger takes `LevelTrace` —
   before, every `add_ref`/`release` formatted the pointer even with logging off.
+- `ScreenInfoRenderHandler`, `FocusHandler`, `KeyboardHandler`, `FileDialogHandler`,
+  `AuthHandler` and `FrameHandler` are declared in the root package instead of aliased,
+  so `go doc` shows their methods; `BindingGuard` and `PopupViewFactory` are func types
+  of their own. Existing implementations and func literals keep compiling (#21).
 
 ### Removed
 

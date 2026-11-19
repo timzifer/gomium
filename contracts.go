@@ -27,7 +27,7 @@ import (
 // substitution, so do not move a type out of types.go without checking what
 // names it in a signature here.
 //
-// The three func types work the same way, except that func types are only
+// The five func types work the same way, except that func types are only
 // convertible, not assignable - the conversion happens once inside the
 // wrapper in api.go and costs nothing at runtime. They qualify because each
 // appears only as a parameter of an exported top-level function.
@@ -180,20 +180,76 @@ type PopupRenderHandler interface {
 
 // ScreenInfoRenderHandler is an optional RenderHandler extension for HiDPI-
 // aware hosts. Implement it on your own RenderHandler; without it CEF assumes
-// scale 1. Returning ok=false keeps CEF's default for that query.
-type ScreenInfoRenderHandler = cef.ScreenInfoRenderHandler
+// scale 1 and the view rect as the screen, which renders blurry on scaled
+// displays. Returning ok=false from either method keeps CEF's default for
+// that query.
+type ScreenInfoRenderHandler interface {
+	GetScreenInfo() (info ScreenInfo, ok bool)
+	// GetScreenPoint maps a view-local point to screen coordinates (device
+	// pixels on Windows/Linux).
+	GetScreenPoint(viewX, viewY int) (screenX, screenY int, ok bool)
+}
 
-// FocusHandler observes browser focus. Escape hatch: hand focus back to your
-// own widgets from OnTakeFocus.
-type FocusHandler = cef.FocusHandler
+// FocusHandler observes keyboard focus of the browser. Callbacks run on the
+// browser process UI thread - keep them short.
+//
+// Escape hatch: hand focus back to your own widgets from OnTakeFocus. With
+// next=false the user tabbed backwards out of the page, so the host should
+// move focus to its previous widget.
+type FocusHandler interface {
+	// OnTakeFocus fires when the browser gives up focus (Tab past the last or
+	// before the first element). next is true for forward Tab.
+	OnTakeFocus(instance Browser, next bool)
+	// OnSetFocus fires before the browser takes focus. Return true to
+	// suppress the focus change, false to accept it.
+	OnSetFocus(instance Browser, source FocusSource) bool
+	// OnGotFocus fires after the browser received focus.
+	OnGotFocus(instance Browser)
+}
 
-// KeyboardHandler sees keys before and after the page. Return handled=true to
-// swallow a key, or implement the host's own shortcut handling.
-type KeyboardHandler = cef.KeyboardHandler
+// KeyboardHandler sees every key before (OnPreKeyEvent) and after
+// (OnKeyEvent) the page does. Callbacks run on the browser process UI thread.
+//
+// Use it for host shortcuts (return handled=true to swallow the key) and to
+// decide which shortcuts the page may see: OnPreKeyEvent can report
+// isShortcut=true to let CEF treat the key as a browser shortcut.
+type KeyboardHandler interface {
+	OnPreKeyEvent(instance Browser, event KeyboardEvent) (handled, isShortcut bool)
+	OnKeyEvent(instance Browser, event KeyboardEvent) (handled bool)
+}
 
-// FileDialogHandler takes over file pickers. Return handled=true and call the
-// callback later to show your own picker (e.g. Fyne); false = CEF default.
-type FileDialogHandler = cef.FileDialogHandler
+// FileDialogHandler receives <input type=file>, save and folder requests.
+// Runs on the browser process UI thread - return fast.
+//
+// Escape hatch: return handled=true to take the dialog over (e.g. show a
+// Fyne file picker) and call callback once the user decided. Return
+// handled=false to let CEF show its native dialog.
+type FileDialogHandler interface {
+	OnFileDialog(instance Browser, mode FileDialogMode, title, defaultFilePath string, acceptFilters []string, callback FileDialogCallback) (handled bool)
+}
+
+// AuthHandler answers HTTP and proxy auth challenges with a login form of
+// your own. Runs synchronously on the browser process UI thread.
+//
+// Return AuthHandled to take the challenge over and call the callback later -
+// or right away. Return AuthDefault to cancel the challenge (CEF's own
+// dialog is disabled).
+type AuthHandler interface {
+	OnAuthCredentials(instance Browser, request AuthRequest, callback AuthCallback) AuthAction
+}
+
+// FrameHandler observes frame lifecycle (iframes, main frame swaps).
+// Callbacks run on the browser process UI thread.
+//
+// The CefFrame arguments are valid only for the duration of the call. Retain
+// nothing; to use a frame later, keep its identifier and look it up again.
+type FrameHandler interface {
+	OnFrameCreated(instance Browser, frame CefFrame)
+	OnFrameDestroyed(instance Browser, frame CefFrame)
+	OnFrameAttached(instance Browser, frame CefFrame, reattached bool)
+	OnFrameDetached(instance Browser, frame CefFrame)
+	OnMainFrameChanged(instance Browser, oldFrame, newFrame CefFrame)
+}
 
 // FileDialogCallback finishes a dialog taken over by a FileDialogHandler.
 type FileDialogCallback = cef.FileDialogCallback
@@ -224,6 +280,15 @@ type CertificateErrorHandler func(instance Browser, certError int, requestUrl st
 
 type WorkerCallback func(delay int, worker Worker)
 
+// BindingGuard decides whether a binding call may run. It is set per browser
+// with WithBindingGuard, or for all browsers without one with
+// WithDefaultBindingGuard. false rejects the call.
+type BindingGuard func(call BindingCall) bool
+
+// PopupViewFactory builds the PopupView for a popup (see WithPopupView).
+// Returning false keeps CEF's native popup window.
+type PopupViewFactory func(opener Browser, request PopupRequest) (PopupView, bool)
+
 // Compile-time proof that each declaration above is exactly its internal/cef
 // counterpart. Each pair asserts both inclusions, which together mean
 // equality: a method added to or removed from the binding fails to build
@@ -232,36 +297,48 @@ type WorkerCallback func(delay int, worker Worker)
 //
 // These are compile-time only - no init work, nothing in the binary.
 var (
-	_ cef.LoadHandler            = (LoadHandler)(nil)
-	_ LoadHandler                = (cef.LoadHandler)(nil)
-	_ cef.DisplayHandler         = (DisplayHandler)(nil)
-	_ DisplayHandler             = (cef.DisplayHandler)(nil)
-	_ cef.ConsoleMessageHandler  = (ConsoleMessageHandler)(nil)
-	_ ConsoleMessageHandler      = (cef.ConsoleMessageHandler)(nil)
-	_ cef.RequestHandler         = (RequestHandler)(nil)
-	_ RequestHandler             = (cef.RequestHandler)(nil)
-	_ cef.ResourceInterceptor    = (ResourceInterceptor)(nil)
-	_ ResourceInterceptor        = (cef.ResourceInterceptor)(nil)
-	_ cef.ContextMenuHandler     = (ContextMenuHandler)(nil)
-	_ ContextMenuHandler         = (cef.ContextMenuHandler)(nil)
-	_ cef.JsDialogHandler        = (JsDialogHandler)(nil)
-	_ JsDialogHandler            = (cef.JsDialogHandler)(nil)
-	_ cef.DownloadHandler        = (DownloadHandler)(nil)
-	_ DownloadHandler            = (cef.DownloadHandler)(nil)
-	_ cef.DragHandler            = (DragHandler)(nil)
-	_ DragHandler                = (cef.DragHandler)(nil)
-	_ cef.FindHandler            = (FindHandler)(nil)
-	_ FindHandler                = (cef.FindHandler)(nil)
-	_ cef.LifeSpanHandler        = (LifeSpanHandler)(nil)
-	_ LifeSpanHandler            = (cef.LifeSpanHandler)(nil)
-	_ cef.RenderHandler          = (RenderHandler)(nil)
-	_ RenderHandler              = (cef.RenderHandler)(nil)
-	_ cef.ResizableRenderHandler = (ResizableRenderHandler)(nil)
-	_ ResizableRenderHandler     = (cef.ResizableRenderHandler)(nil)
-	_ cef.PopupRenderHandler     = (PopupRenderHandler)(nil)
-	_ PopupRenderHandler         = (cef.PopupRenderHandler)(nil)
-	_ cef.V8Listener             = (V8Listener)(nil)
-	_ V8Listener                 = (cef.V8Listener)(nil)
+	_ cef.LoadHandler             = (LoadHandler)(nil)
+	_ LoadHandler                 = (cef.LoadHandler)(nil)
+	_ cef.DisplayHandler          = (DisplayHandler)(nil)
+	_ DisplayHandler              = (cef.DisplayHandler)(nil)
+	_ cef.ConsoleMessageHandler   = (ConsoleMessageHandler)(nil)
+	_ ConsoleMessageHandler       = (cef.ConsoleMessageHandler)(nil)
+	_ cef.RequestHandler          = (RequestHandler)(nil)
+	_ RequestHandler              = (cef.RequestHandler)(nil)
+	_ cef.ResourceInterceptor     = (ResourceInterceptor)(nil)
+	_ ResourceInterceptor         = (cef.ResourceInterceptor)(nil)
+	_ cef.ContextMenuHandler      = (ContextMenuHandler)(nil)
+	_ ContextMenuHandler          = (cef.ContextMenuHandler)(nil)
+	_ cef.JsDialogHandler         = (JsDialogHandler)(nil)
+	_ JsDialogHandler             = (cef.JsDialogHandler)(nil)
+	_ cef.DownloadHandler         = (DownloadHandler)(nil)
+	_ DownloadHandler             = (cef.DownloadHandler)(nil)
+	_ cef.DragHandler             = (DragHandler)(nil)
+	_ DragHandler                 = (cef.DragHandler)(nil)
+	_ cef.FindHandler             = (FindHandler)(nil)
+	_ FindHandler                 = (cef.FindHandler)(nil)
+	_ cef.LifeSpanHandler         = (LifeSpanHandler)(nil)
+	_ LifeSpanHandler             = (cef.LifeSpanHandler)(nil)
+	_ cef.RenderHandler           = (RenderHandler)(nil)
+	_ RenderHandler               = (cef.RenderHandler)(nil)
+	_ cef.ResizableRenderHandler  = (ResizableRenderHandler)(nil)
+	_ ResizableRenderHandler      = (cef.ResizableRenderHandler)(nil)
+	_ cef.PopupRenderHandler      = (PopupRenderHandler)(nil)
+	_ PopupRenderHandler          = (cef.PopupRenderHandler)(nil)
+	_ cef.V8Listener              = (V8Listener)(nil)
+	_ V8Listener                  = (cef.V8Listener)(nil)
+	_ cef.ScreenInfoRenderHandler = (ScreenInfoRenderHandler)(nil)
+	_ ScreenInfoRenderHandler     = (cef.ScreenInfoRenderHandler)(nil)
+	_ cef.FocusHandler            = (FocusHandler)(nil)
+	_ FocusHandler                = (cef.FocusHandler)(nil)
+	_ cef.KeyboardHandler         = (KeyboardHandler)(nil)
+	_ KeyboardHandler             = (cef.KeyboardHandler)(nil)
+	_ cef.FileDialogHandler       = (FileDialogHandler)(nil)
+	_ FileDialogHandler           = (cef.FileDialogHandler)(nil)
+	_ cef.AuthHandler             = (AuthHandler)(nil)
+	_ AuthHandler                 = (cef.AuthHandler)(nil)
+	_ cef.FrameHandler            = (FrameHandler)(nil)
+	_ FrameHandler                = (cef.FrameHandler)(nil)
 
 	// Func types are convertible rather than assignable; a conversion in each
 	// direction proves the signatures are identical.
@@ -271,4 +348,8 @@ var (
 	_ = CertificateErrorHandler(cef.CertificateErrorHandler(nil))
 	_ = cef.WorkerCallback(WorkerCallback(nil))
 	_ = WorkerCallback(cef.WorkerCallback(nil))
+	_ = cef.BindingGuard(BindingGuard(nil))
+	_ = BindingGuard(cef.BindingGuard(nil))
+	_ = cef.PopupViewFactory(PopupViewFactory(nil))
+	_ = PopupViewFactory(cef.PopupViewFactory(nil))
 )
