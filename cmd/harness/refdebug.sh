@@ -42,9 +42,9 @@ for scenario in "$@"; do
 	log="$logs/${scenario//+/_}.log"
 	rm -f "$cef_log"
 	# Not timeout(1): after a failed DCHECK the debug libcef can wedge the
-	# process in its exit path (a second DCHECK during DLL detach), where not
-	# even a kill ends it and timeout would wait forever. Past the deadline the
-	# scenario fails and the process is left behind.
+	# process in its exit path (a second DCHECK during DLL detach), where only
+	# an elevated kill ends it and timeout would wait forever. Past the
+	# deadline the scenario fails and the process is left behind.
 	env "${vars[@]}" "$harness" >"$log" 2>&1 &
 	pid=$!
 	deadline=$((SECONDS + seconds + ${GOMIUM_SCENARIO_GRACE:-60}))

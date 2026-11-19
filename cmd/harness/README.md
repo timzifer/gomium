@@ -79,9 +79,10 @@ go run ./tools/cefdl -debug -dest Release     # a plain go run ./tools/cefdl swi
 GOMIUM_RUN_SECONDS=30 GOMIUM_SCENARIO_GRACE=120 cmd/harness/refdebug.sh build/harness-refdebug.exe
 ```
 
-After a failed DCHECK the process can hang in its exit path for good - on Windows not
-even `taskkill /F` ends it. `refdebug.sh` abandons it at the deadline and goes on; the
-leftover process holds its memory until a reboot. CI runs this nightly
+After a failed DCHECK the process can hang in its exit path for good - on Windows a
+plain `taskkill /F` does not end it, only one from an elevated shell does.
+`refdebug.sh` abandons it at the deadline and goes on, so the leftover process has to
+be killed as administrator (`taskkill /F /IM harness-refdebug.exe`). CI runs this nightly
 (`.github/workflows/cef-debug.yml`, also startable by hand).
 
 The harness uses its own profile, `%TEMP%/gomium-test-profile`, so it never collides with
