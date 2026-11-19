@@ -410,7 +410,7 @@ func goBindingExecute(id int64, argc int64, argv unsafe.Pointer, retval unsafe.P
 	}
 
 	// the call goes through the frame that made it: the browser's own
-	// SendProcessMessage addresses the main frame, which would hide iframes
+	// sendProcessMessage addresses the main frame, which would hide iframes
 	// from the guard
 	theFrame := currentContext.Frame()
 	if theFrame == nil {

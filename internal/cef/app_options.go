@@ -52,13 +52,6 @@ func WithMessagePumpWorker(pumpWorker WorkerCallback) Option {
 	}
 }
 
-/*
-	func WithV8Option(option v8.Option) Option {
-		return func(a *app) {
-			a.v8options = append(a.v8options, option)
-		}
-	}
-*/
 func WithLogger(logger zerolog.Logger) Option {
 	return func(c *cefApp) {
 		c.options.logger = logger
@@ -81,14 +74,6 @@ func WithInitializationTimeout(duration time.Duration) Option {
 	return func(c *cefApp) {
 		c.options.initializationTimeout = duration
 	}
-}
-
-// Deprecated: single-process mode no longer exists in CEF 151 - Chromium
-// removed it. The option is kept for source compatibility and has no effect;
-// CEF always runs multi-process now. Note that extension functions therefore
-// execute in the render subprocess, not in the browser process.
-func WithSingleProcess(singleProcess bool) Option {
-	return func(c *cefApp) {}
 }
 
 func WithCachePath(cachePath string) Option {

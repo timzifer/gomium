@@ -7,7 +7,7 @@ import (
 // The types you receive, aliased so that composite literals, type assertions
 // and interface implementations written against these names keep working - a
 // defined type would break all three, and for the types carrying methods
-// (Request, ExceptionError, the Value structs) it would drop the methods
+// (Request, ExceptionError) it would drop the methods
 // outright.
 //
 // The cost is documentation: `go doc gomium.Browser` prints the alias and its
@@ -16,10 +16,6 @@ import (
 // are spelled out in contracts.go for exactly that reason; these are the ones
 // the library hands you, and their methods are documented in docs/api.md and
 // in the declarations in internal/cef.
-
-type ArrayValue = cef.ArrayValue
-
-type BooleanValue = cef.BooleanValue
 
 type Browser = cef.Browser
 
@@ -99,15 +95,7 @@ type CookieSameSite = cef.CookieSameSite
 
 type CursorType = cef.CursorType
 
-type DateValue = cef.DateValue
-
 type DirtyArea = cef.DirtyArea
-
-type DispatchWith = cef.DispatchWith
-
-type Dispatcher = cef.Dispatcher
-
-type DoubleValue = cef.DoubleValue
 
 // DownloadControl cancels, pauses or resumes a running download. Only
 // valid during the OnDownloadUpdated call it was handed to.
@@ -124,8 +112,6 @@ type ExceptionError = cef.ExceptionError
 type Exported = cef.Exported
 
 type ExportedFunction = cef.ExportedFunction
-
-type Exporter = cef.Exporter
 
 // FindResult reports the state of a Browser.Find search. Multiple
 // updates may arrive per search; FinalUpdate marks the last one.
@@ -158,10 +144,6 @@ type FrameHandler = cef.FrameHandler
 // ScreenInfo describes the screen a render handler's view lives on (DIP).
 type ScreenInfo = cef.ScreenInfo
 
-type FunctionValue = cef.FunctionValue
-
-type IntValue = cef.IntValue
-
 type JsDialogAction = cef.JsDialogAction
 
 // JsDialogCallback finishes a dialog the handler took over. Continue must
@@ -184,10 +166,6 @@ type MenuItemType = cef.MenuItemType
 type MouseButton = cef.MouseButton
 
 type MouseButtonDirection = cef.MouseButtonDirection
-
-type NullValue = cef.NullValue
-
-type ObjectValue = cef.ObjectValue
 
 type Option = cef.Option
 
@@ -215,8 +193,6 @@ type PopupView = cef.PopupView
 
 // PopupViewFactory builds the PopupView for a popup (see WithPopupView).
 type PopupViewFactory = cef.PopupViewFactory
-
-type ProcessMessage = cef.ProcessMessage
 
 // Request wraps a cef_request_t. It is only valid during the callback it was
 // handed to (for OnBeforeResourceLoad with ResourceLoadContinueAsync: until
@@ -252,15 +228,7 @@ type ResourceLoadResult = cef.ResourceLoadResult
 
 type ResultCallback = cef.ResultCallback
 
-type StringValue = cef.StringValue
-
-type UintValue = cef.UintValue
-
-type UndefinedValue = cef.UndefinedValue
-
 type V8Context = cef.V8Context
-
-type Value = cef.Value
 
 type ValueType = cef.ValueType
 

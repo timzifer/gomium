@@ -726,35 +726,6 @@ func main() {
 							}
 						}()
 					}
-					go func() {
-
-						time.Sleep(3 * time.Second)
-						/*
-							v8 := br.Cef().MainFrame().V8()
-							if nil != v8 {
-								spew.Dump(gomium.CefCurrentlyOn(gomium.TidRenderer))
-								spew.Dump(gomium.CefCurrentlyOn(gomium.TidUI))
-							}*/
-
-						/*_ = br.Cef().MainFrame().ExecuteJavaScriptWithResult("navigator.appName", nil, 99, func(result gomium.Value, err *gomium.ExceptionError) {
-
-							if err != nil {
-								logger.Error().Err(err).Send()
-							} else {
-								logger.Info().Any("result", result).Msg("result received")
-							}
-						})*/
-						/*
-							_ = br.Cef().MainFrame().ExecuteJavaScriptWithResult(`const person = {
-								  firstName: "John",
-								  lastName: "Doe",
-								  age: 50,
-								  eyeColor: "blue"
-								}; person`, nil, 101, func(result gomium.Value, err *gomium.ExceptionError) {
-								/*/
-						//		}
-
-					}()
 				}
 
 			}()

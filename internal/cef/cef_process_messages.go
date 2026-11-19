@@ -64,7 +64,7 @@ func init() {
 
 type (
 	Dispatcher interface {
-		SendProcessMessage(id CefProcessId, message ProcessMessage) bool
+		sendProcessMessage(id CefProcessId, message ProcessMessage) bool
 	}
 	DispatchWith interface {
 		DispatchWith(dispatcher Dispatcher, target CefProcessId) (bool, error)
@@ -86,7 +86,7 @@ type (
 )
 
 // dispatchGobPayload encodes payload, wraps it into a process message and
-// sends it. The message reference is consumed by SendProcessMessage; on the
+// sends it. The message reference is consumed by sendProcessMessage; on the
 // error paths it is released here.
 func dispatchGobPayload(name string, payload any, dispatcher Dispatcher, target CefProcessId) (bool, error) {
 	buf := bytes.NewBuffer(nil)
@@ -112,7 +112,7 @@ func dispatchGobPayload(name string, payload any, dispatcher Dispatcher, target 
 		return false, errors.New("could not attach payload to process message")
 	}
 
-	return dispatcher.SendProcessMessage(target, msg), nil
+	return dispatcher.sendProcessMessage(target, msg), nil
 }
 
 func (e javaScriptEvaluationRequest) DispatchWith(dispatcher Dispatcher, target CefProcessId) (bool, error) {

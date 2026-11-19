@@ -297,7 +297,7 @@ func goResourceRequestGetResourceHandler(
 	// the request wrapper owns the parameter reference; URL and method are
 	// extracted here so the interceptor never touches the request after the
 	// callback returns
-	r := From(unsafe.Pointer(cefRequest))
+	r := requestFrom(unsafe.Pointer(cefRequest))
 	defer r.invalidateAndRelease()
 
 	handler, browserInstance := resourceRequestHandler(self, cefBrowser)
@@ -338,7 +338,7 @@ func goOnBeforeResourceLoad(
 	// the request wrapper owns the reference carried by the parameter; it is
 	// invalidated below (or by Continue/Cancel in the async case), so late
 	// accesses from user code degrade safely instead of touching freed memory
-	r := From(unsafe.Pointer(cefRequest))
+	r := requestFrom(unsafe.Pointer(cefRequest))
 
 	// callback and request are kept only for the async case; Continue or
 	// Cancel release them
@@ -394,7 +394,7 @@ func goOnBeforeBrowse(
 	defer releaseBase(unsafe.Pointer(cefBrowser))
 	defer releaseBase(unsafe.Pointer(frame))
 
-	cefRequestInstance := From(unsafe.Pointer(cefRequest))
+	cefRequestInstance := requestFrom(unsafe.Pointer(cefRequest))
 	defer cefRequestInstance.invalidateAndRelease()
 
 	if requestUrl, err := cefRequestInstance.GetUrl(); err != nil {
@@ -426,7 +426,7 @@ func goOnProtocolExecution(
 	defer releaseBase(unsafe.Pointer(frame))
 
 	// on_protocol_execution now hands over the request instead of a URL string
-	cefRequestInstance := From(unsafe.Pointer(cefRequest))
+	cefRequestInstance := requestFrom(unsafe.Pointer(cefRequest))
 	defer cefRequestInstance.invalidateAndRelease()
 
 	if requestUrl, err := cefRequestInstance.GetUrl(); err != nil {

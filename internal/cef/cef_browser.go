@@ -98,9 +98,9 @@ type (
 		GetFrameByIdentifier(identifier string) CefFrame
 		GetFrame(name string) CefFrame
 		Frames() []CefFrame
-		// SendProcessMessage consumes the message - it must not be used
+		// sendProcessMessage consumes the message - it must not be used
 		// afterwards.
-		SendProcessMessage(id CefProcessId, message ProcessMessage) bool
+		sendProcessMessage(id CefProcessId, message ProcessMessage) bool
 
 		// Release drops the reference held by this wrapper (only for
 		// wrappers obtained from owning getters).
@@ -108,8 +108,8 @@ type (
 	}
 )
 
-func (c cefBrowser) SendProcessMessage(id CefProcessId, message ProcessMessage) bool {
-	// refcheck:owned SendProcessMessage consumes the message
+func (c cefBrowser) sendProcessMessage(id CefProcessId, message ProcessMessage) bool {
+	// refcheck:owned sendProcessMessage consumes the message
 	return C.browser_send_process_message(c.cStruct, C.cef_process_id_t(id), message.ptr()) != 0
 }
 

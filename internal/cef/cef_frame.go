@@ -91,9 +91,9 @@ type (
 		LoadString(source string, sourceUrl *url.URL)
 		LoadUrl(url url.URL)
 
-		// SendProcessMessage consumes the message - it must not be used
+		// sendProcessMessage consumes the message - it must not be used
 		// afterwards.
-		SendProcessMessage(id CefProcessId, message ProcessMessage) bool
+		sendProcessMessage(id CefProcessId, message ProcessMessage) bool
 
 		V8() V8Context
 
@@ -197,8 +197,8 @@ func dataURLForHTML(source string) string {
 	return "data:text/html;base64," + base64.StdEncoding.EncodeToString([]byte(source))
 }
 
-func (f cefFrame) SendProcessMessage(id CefProcessId, message ProcessMessage) bool {
-	// refcheck:owned SendProcessMessage consumes the message
+func (f cefFrame) sendProcessMessage(id CefProcessId, message ProcessMessage) bool {
+	// refcheck:owned sendProcessMessage consumes the message
 	C.frame_send_process_message(f.cStruct, C.cef_process_id_t(id), message.ptr())
 	return true
 }

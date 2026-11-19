@@ -195,7 +195,7 @@ func goSchemeHandlerFactoryCreate(
 
 	// the request wrapper owns the parameter reference; URL and method are
 	// read here so the interceptor never touches the request afterwards
-	r := From(unsafe.Pointer(cefRequest))
+	r := requestFrom(unsafe.Pointer(cefRequest))
 	defer r.invalidateAndRelease()
 
 	if cefBrowser == nil {
