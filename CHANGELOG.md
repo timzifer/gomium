@@ -33,6 +33,11 @@ fetched — they are listed for the record of what changed when.
 - A bound function that waits for the UI thread itself (cookie manager, DevTools
   `Call`, `PrintToPdf`) no longer blocks until its timeout, and a slow one no longer
   freezes every browser while it runs.
+- `WithPopupView` popups no longer leak clients: a popup CEF aborts after
+  `on_before_popup` allowed it (`on_before_popup_aborted`) now closes the client
+  prepared for it, as does closing the opener's client while the popup is still being
+  built. Every popup also leaked one reference to the opener's `cef_client_t`, which
+  kept it from ever being freed.
 
 ## [0.5.0] - 2026-11-18
 
