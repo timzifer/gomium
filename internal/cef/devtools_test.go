@@ -255,3 +255,63 @@ func TestDevToolsOnCancelStopsDelivery(t *testing.T) {
 	case <-time.After(50 * time.Millisecond):
 	}
 }
+
+func TestDevToolsQueuesOnlySubscribedEvents(t *testing.T) {
+	s, _ := newTestDevToolsSession(t)
+
+	s.handleMessage([]byte(`{"method":"Network.dataReceived","params":{}}`))
+	s.qmu.Lock()
+	n := len(s.queue)
+	s.qmu.Unlock()
+	if n != 0 {
+		t.Fatalf("queued %d events nobody subscribed to", n)
+	}
+}
+
+func TestDevToolsQueueIsBounded(t *testing.T) {
+	s, _ := newTestDevToolsSession(t)
+
+	release := make(chan struct{})
+	delivered := make(chan struct{}, devToolsMaxQueued+64)
+	s.On("Test.flood", func(json.RawMessage) {
+		<-release
+		delivered <- struct{}{}
+	})
+	const extra = 50
+	for i := 0; i < devToolsMaxQueued+extra; i++ {
+		s.handleMessage([]byte(`{"method":"Test.flood","params":{}}`))
+	}
+
+	s.qmu.Lock()
+	queued, dropped := len(s.queue), s.dropped
+	s.qmu.Unlock()
+	if queued > devToolsMaxQueued {
+		t.Fatalf("queue grew to %d, limit %d", queued, devToolsMaxQueued)
+	}
+	// the pump may already hold one event in the blocked handler
+	if dropped < extra-1 {
+		t.Fatalf("dropped %d events, want at least %d", dropped, extra-1)
+	}
+
+	close(release)
+	for i := 0; i < queued; i++ {
+		select {
+		case <-delivered:
+		case <-time.After(5 * time.Second):
+			t.Fatalf("only %d of %d queued events delivered", i, queued)
+		}
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		s.qmu.Lock()
+		empty := s.queue == nil
+		s.qmu.Unlock()
+		if empty {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("drained queue still holds its backing array")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}

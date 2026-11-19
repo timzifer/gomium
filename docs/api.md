@@ -534,7 +534,9 @@ client := gomium.NewClient(
   `*DevToolsError`. A detach during an open call yields
   `ErrDevToolsDetached`, closing the browser yields `ErrDevToolsClosed`.
 - Events are delivered in arrival order. The handler runs on its own
-  goroutine, not on the UI thread.
+  goroutine, not on the UI thread. Only events with a handler are queued; past
+  4096 undelivered events new ones are dropped and a warning is logged, so a
+  handler must keep up with the domains it enables.
 - Lifecycle: an attach holds until CEF detaches the agent. Then open
   `Call`s expire with `ErrDevToolsDetached`, and all `On` handlers are removed.
   The receiver then runs again and re-registers domains and handlers. An
