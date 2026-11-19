@@ -24,6 +24,9 @@ fetched — they are listed for the record of what changed when.
   browser UI thread, and calls from the page may run concurrently — a bound function
   must be safe for that. `BindingCall.FrameURL` and `MainFrame` are still taken when
   the call arrives.
+- With the external message pump, `CefApp.Close` called off the thread that
+  initialized CEF returns an error instead of pumping and shutting CEF down on the
+  wrong thread.
 
 ### Fixed
 
@@ -38,6 +41,13 @@ fetched — they are listed for the record of what changed when.
   prepared for it, as does closing the opener's client while the popup is still being
   built. Every popup also leaked one reference to the opener's `cef_client_t`, which
   kept it from ever being freed.
+- A frame whose new V8 context is created before the old one is released keeps the new
+  one; before, the late release dropped it and evaluations in that frame failed with
+  "no v8 context".
+- Binding calls the browser never answered are rejected when their context is
+  released, instead of holding the promise and the context until the renderer exits.
+- `NewBrowser` no longer returns a timeout error for a browser that arrived while the
+  timeout fired; the browser was registered all the same and lived on unseen.
 
 ## [0.5.0] - 2026-11-18
 
