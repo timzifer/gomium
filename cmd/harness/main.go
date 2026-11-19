@@ -204,7 +204,7 @@ func main() {
 				activateMacApplication()
 			}
 
-			renderHandler := gomium.NewImageRenderHandler(image.NewRGBA(image.Rect(0, 0, 1024, 786)), func(result image.Image) {
+			writeShot := func(result image.Image) {
 				outputFile, err := os.Create(fmt.Sprintf("shots/%d.jpg", time.Now().UnixMicro()))
 				if err != nil {
 					fmt.Println("Error creating output file:", err)
@@ -216,7 +216,16 @@ func main() {
 					fmt.Println("Error encoding output image:", err)
 					return
 				}
-			})
+			}
+			renderHandler := gomium.NewImageRenderHandler(image.NewRGBA(image.Rect(0, 0, 1024, 786)), writeShot)
+			// GOMIUM_FRAME_TEST=1: the borrowed-frame handler instead. The
+			// shot is encoded inside the callback, while the frame is valid.
+			if os.Getenv("GOMIUM_FRAME_TEST") != "" {
+				renderHandler = gomium.NewFrameRenderHandler(1024, 786, func(frame *image.RGBA, dirty []image.Rectangle) {
+					logger.Debug("frame painted", "dirty", len(dirty))
+					writeShot(frame)
+				})
+			}
 
 			// popupAttached hands the popup browser from Attach to the close step
 			popupAttached := make(chan gomium.Browser, 1)

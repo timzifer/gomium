@@ -12,6 +12,14 @@ fetched — they are listed for the record of what changed when.
 
 ## [Unreleased]
 
+### Added
+
+- `NewFrameRenderHandler`: an OSR render handler that paints into one surface it owns
+  and lends it, with the dirty rectangles, to the callback. Nothing is allocated per
+  paint; `NewImageRenderHandler` copies the full view for every callback (a 16x16 paint
+  on a 1080p view: 1.9 ms and 8.3 MB vs. 0.1 µs and 0 B). The harness runs it as the
+  `FRAME` scenario (#23).
+
 ### Changed
 
 - **Breaking:** logging uses `log/slog` instead of zerolog (#22). `WithLogger`,

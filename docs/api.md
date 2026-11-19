@@ -171,6 +171,18 @@ rh := gomium.NewImageRenderHandler(image.NewRGBA(image.Rect(0, 0, w, h)),
 client := app.NewClient(gomium.WithRenderHandler(rh))
 ```
 
+`NewImageRenderHandler` hands every callback a fresh copy of the whole view — simple
+and safe to keep, but 8 MB per paint at 1080p. For 30–60 fps, large or HiDPI views use
+`NewFrameRenderHandler`: it reuses one surface and passes the dirty rectangles, nothing
+is allocated per paint.
+
+```go
+rh := gomium.NewFrameRenderHandler(w, h, func(frame *image.RGBA, dirty []image.Rectangle) {
+    // frame and dirty are valid only inside this call: copy the dirty rects
+    // into your texture / buffer, do not keep frame
+})
+```
+
 - `RenderHandler`: `GetViewRect`, `DoPaint([]DirtyArea)`, `CursorChanged`.
 - `ResizableRenderHandler`: additionally `Resize(w, h)` — then `Browser.Redraw()`.
 - OSR forces the Alloy runtime style (Chrome style cannot do OSR).
@@ -189,7 +201,8 @@ type PopupRenderHandler interface {
 }
 ```
 
-- `NewImageRenderHandler` implements it and composites the popup into the image.
+- `NewImageRenderHandler` and `NewFrameRenderHandler` implement it and composite the
+  popup into the image.
   Existing users see dropdowns without any change.
 - **Escape hatch:** your own handler with `GetViewRect`/`DoPaint`/`CursorChanged`
   plus the three popup methods. Then the host app draws the popup itself
