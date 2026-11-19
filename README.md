@@ -34,14 +34,16 @@ Verified on 156.0.27 (Windows), live in `cmd/harness` and in a Fyne host applica
 - popups, downloads, custom schemes, certificate errors, keyboard input
 - the file dialog reaches `FileDialogHandler`, HTTP auth challenges reach `AuthHandler`
 - PDF printing writes a file; the in-process DevTools protocol answers calls
+- reference counting: the offscreen scenarios run clean under the `refdebug` ledger
+  (in CI, on every pull request) and against CEF's debug runtime (nightly)
 
 Not verified yet: the focus and frame handlers, and anything on macOS or Linux against
 156.0.27 — the platform headers (`cef_types_linux.h` / `cef_types_mac.h`) are identical
 to the 156.0.27 distributions, but no build or run was done there.
 
 > **Status: pre-release (`v0.x`).** The API is not stable yet — expect breaking changes
-> between minor versions. Releases are tagged (`v0.5.0` onwards), so consumers can pin a
-> version instead of a commit. Windows and macOS/arm64 have both started a real browser;
+> between minor versions; [`CHANGELOG.md`](CHANGELOG.md) lists them per release. Releases
+> are tagged (`v0.5.0` onwards), so consumers can pin a version instead of a commit. Windows and macOS/arm64 have both started a real browser;
 > Linux has never run one. See
 > [Road to a publishable package](#road-to-a-publishable-package) for the concrete gaps.
 
@@ -238,6 +240,22 @@ drag, find, JS dialog, context menu, cookie manager, request context, V8 / proce
 messages. Each bridge calls the `//export`ed Go functions of its sibling file, which is
 why a handler's `.go` and its `.c` always live in the same package.
 
+**Threads.** Handler callbacks run on CEF's browser-process UI thread and must return
+quickly. Two kinds of host code deliberately run elsewhere: JavaScript bindings
+(`WithBinding`) and their guard run on a goroutine of their own and may be called
+concurrently, so they can wait for the UI thread themselves; V8 listeners
+(`WithV8Listener`) run in the render process, synchronously on its main thread, before
+any page script of the new context.
+
+**Reference counting.** Every CEF object is refcounted by hand across the cgo
+boundary. Three tools keep that honest: `go run ./tools/refcheck` lints every bridge
+call for a missing release or hand-off (bridge parameters declare `REF_CONSUMED` /
+`REF_BORROWED`); a `-tags refdebug` build keeps a ledger of every struct gomium
+allocates and fails `Close` with the allocation stack of anything still alive after
+`cef_shutdown`; and `cefdl -debug` fetches CEF's debug runtime, whose DCHECKs catch
+over-releases and leaked wrappers on CEF's side. How to run them:
+[`cmd/harness/README.md`](cmd/harness/README.md#reference-ledger-refdebug).
+
 **One package for the binding, one for the API.** cgo gives every package its own
 distinct set of C types, so splitting the binding by theme would mean converting
 `*C.cef_browser_t` and friends through `unsafe.Pointer` at every seam — exactly where
@@ -267,6 +285,7 @@ callers a slice they cannot convert.
 | `tools/cefshim` | shim generator (`go:generate`) |
 | `tools/cefbundle` | macOS `.app` bundle builder |
 | `tools/cefdiff` | C-API diff scripts for a CEF version upgrade |
+| `tools/refcheck` | refcount lint for the cgo boundary (CI) |
 | `examples/` | minimal, copyable hosts: `osr`, `window` |
 | `cmd/harness` | manual test harness, driven by `GOMIUM_*` env vars |
 | `Release/` | CEF runtime — downloaded, git-ignored |
@@ -280,8 +299,10 @@ callers a slice they cannot convert.
   when the window is closed.
 
 Both use the external message pump driven from the main thread, and both are meant to
-be copied. [`cmd/harness`](cmd/harness) is the opposite: the manual test driver with
-twenty-odd `GOMIUM_*` scenarios, documented in its own README.
+be copied. [`cmd/harness`](cmd/harness) is the opposite: the test driver with
+twenty-odd `GOMIUM_*` scenarios, documented in its own README. `cmd/harness/refdebug.sh`
+runs the offscreen scenarios unattended — against a `refdebug` build in CI, against
+CEF's debug runtime nightly.
 
 ## Platform support
 
@@ -343,28 +364,39 @@ What still stands between this repository and something a third party could
       in `app_bridge.c`, never a trampoline. `internal/cefshim` covers the shim slot
       contract, the per-architecture trampolines and generator drift, and
       `facade_test.go` covers API completeness and import resolution per platform;
-      value conversion, process messages and handler lifetimes have no coverage.
+      value conversion and process messages have no unit tests, and handler lifetimes
+      are covered only by the `refdebug` scenario run.
 - [x] **CI.** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds, vets and
       tests on ubuntu, windows and macOS, gates `gofmt`, and sweeps file selection
       across four `GOOS` values. Nothing links against libcef and the headers are
-      vendored, so no CEF distribution is fetched. Every job asserts that cgo is
+      vendored, so the build jobs fetch no CEF distribution. Every job asserts that cgo is
       actually on before it builds — without that, a runner missing a C compiler
       produces a green run that compiled none of the binding.
 
       Trampoline coverage: linux/amd64 (ELF), windows/amd64 (PE-COFF) and macos-latest,
       which is arm64 (Mach-O), plus a `gcc-aarch64-linux-gnu` cross build for
-      ELF/arm64. Only windows/arm64 is left, and that is the `#error` case. What CI
-      still cannot do is run against a real CEF distribution — that stays `cmd/harness`
-      by hand.
+      ELF/arm64. Only windows/arm64 is left, and that is the `#error` case.
+
+      One job does run CEF: `refdebug (windows)` fetches the distribution and runs the
+      offscreen harness scenarios against a `-tags refdebug` build, and `refcheck` lints
+      the refcounting on every run. [`cef-debug.yml`](.github/workflows/cef-debug.yml)
+      repeats the scenarios nightly against CEF's debug runtime;
+      [`cef-review.yml`](.github/workflows/cef-review.yml) adds an advisory agent review
+      to pull requests touching `internal/cef` once an API key is configured. Windowed
+      browsers, macOS and Linux still need `cmd/harness` by hand.
 - [x] **Version consistency check.** `cefdl/cef.version` and the vendored `include/` headers
       must agree; `TestPinnedVersionMatchesHeaders` in `cefdl` checks the version string
       and the numeric defines of `include/cef_version.h`, in CI.
-- [ ] **Race detector and leak checks.** The binding hands Go pointers across cgo
-      callbacks and does its own CEF refcounting — a `-race` run and a refcount/leak
-      test are the two things most likely to find real bugs here.
-- [ ] **Audit `unsafe` and refcounting.** Especially the registries
-      (`internal/cef/cef_process_message_registry.go`, `internal/cef/javascript_result_callback_registry.go`) and
-      every handler that outlives a browser.
+- [x] **Leak checks.** The `refdebug` ledger (gomium's structs, per pull request) and
+      CEF's debug runtime (CEF's wrappers, nightly) both run the harness scenarios and
+      fail on a leak or an over-release; `tools/refcheck` lints the cgo boundary.
+- [ ] **Race detector.** The binding hands Go pointers across cgo callbacks; a `-race`
+      run of the harness scenarios has not been done yet.
+- [x] **Audit `unsafe` and refcounting.** Done for the registries and every handler
+      that outlives a browser; its findings — bindings on the UI thread, V8 listeners
+      off the renderer main thread, the popup client leak and smaller lifecycle gaps —
+      are fixed in 0.6.0. The audit prompt lives on as the optional agent review
+      (`.github/claude-review/cef-audit.md`).
 
 ### Platform coverage
 
