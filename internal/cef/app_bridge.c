@@ -147,6 +147,17 @@ static void CEF_CALLBACK on_before_command_line_processing_trampoline(struct _ce
     if (g_ignore_certificate_errors) {
         append_switch(command_line, "ignore-certificate-errors");
     }
+
+#if defined(__linux__)
+    // The zygote is this Go executable, and the Go runtime always runs
+    // several threads. Chromium's zygote refuses to fork a multi-threaded
+    // process, so every child it should spawn (GPU, renderer) fails with
+    // "GPU process launch failed: error_code=1002" and the browser dies with
+    // "GPU process isn't usable". Without a zygote the browser process
+    // launches children by fork+exec itself. Requires --no-sandbox, which
+    // no_sandbox = 1 already implies.
+    append_switch(command_line, "no-zygote");
+#endif
     // Do NOT release command_line here: it wraps the process-global command
     // line. Releasing it corrupts the browser process and crashes the GPU
     // children (verified empirically against CEF 151).
