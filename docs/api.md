@@ -87,6 +87,7 @@ running (e.g. the terminal app), `cef_initialize` of the second one fails with
 | `WithSingleProcess(bool)` | single-process mode (debugging only) |
 | `WithModuleHandle(h)` | Windows: module handle (`GetModuleHandle(nil)`) |
 | `WithCustomScheme(name, options)` | custom scheme (`help://`, `app://`) — see below |
+| `WithV8Listener(l)` | renderer: V8 context created/released — see [V8 lifecycle](#v8-lifecycle) |
 
 ---
 
@@ -630,8 +631,10 @@ br.Cef().MainFrame().ExecuteJavaScriptWithResult(src, nil, 0,
 
 ### V8 lifecycle
 
-`app.AddV8Listener(gomium.V8ListenerFuncs(created, released))` — per frame on
-context creation (the place for JS injection, e.g. a localStorage shim). Both run
+`gomium.WithV8Listener(gomium.V8ListenerFuncs(created, released))` — pass it to
+both `New` and `ExecuteSubprocess`, since V8 contexts exist only in the render
+process (`CefApp.AddV8Listener` on the browser-process app never fires). Called per
+frame on context creation (the place for JS injection, e.g. a localStorage shim). Both run
 synchronously on the renderer main thread, before any page script of the new context —
 do not block in them; browser and frame are only valid during the call.
 

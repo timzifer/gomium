@@ -34,16 +34,18 @@ Verified on 156.0.27 (Windows), live in `cmd/harness` and in a Fyne host applica
 - popups, downloads, custom schemes, certificate errors, keyboard input
 - the file dialog reaches `FileDialogHandler`, HTTP auth challenges reach `AuthHandler`
 - PDF printing writes a file; the in-process DevTools protocol answers calls
+- reference counting: the offscreen scenarios run clean under the `refdebug` ledger
+  (in CI, on every pull request) and against CEF's debug runtime (nightly)
 
 Not verified yet: the focus and frame handlers, and anything on macOS or Linux against
 156.0.27 — the platform headers (`cef_types_linux.h` / `cef_types_mac.h`) are identical
 to the 156.0.27 distributions, but no build or run was done there.
 
 > **Status: pre-release (`v0.x`).** The API is not stable yet — expect breaking changes
-> between minor versions. Releases are tagged (`v0.5.0` onwards), so consumers can pin a
-> version instead of a commit. Windows and macOS/arm64 have both started a real browser;
-> Linux has never run one. See
-> [Road to a publishable package](#road-to-a-publishable-package) for the concrete gaps.
+> between minor versions; [`CHANGELOG.md`](CHANGELOG.md) lists them per release. Releases
+> are tagged (`v0.5.0` onwards), so consumers can pin a version instead of a commit.
+> Windows and macOS/arm64 have both started a real browser; Linux has never run one.
+> See [Known limitations](#known-limitations).
 
 ## Requirements
 
@@ -238,6 +240,22 @@ drag, find, JS dialog, context menu, cookie manager, request context, V8 / proce
 messages. Each bridge calls the `//export`ed Go functions of its sibling file, which is
 why a handler's `.go` and its `.c` always live in the same package.
 
+**Threads.** Handler callbacks run on CEF's browser-process UI thread and must return
+quickly. Two kinds of host code deliberately run elsewhere: JavaScript bindings
+(`WithBinding`) and their guard run on a goroutine of their own and may be called
+concurrently, so they can wait for the UI thread themselves; V8 listeners
+(`WithV8Listener`) run in the render process, synchronously on its main thread, before
+any page script of the new context.
+
+**Reference counting.** Every CEF object is refcounted by hand across the cgo
+boundary. Three tools keep that honest: `go run ./tools/refcheck` lints every bridge
+call for a missing release or hand-off (bridge parameters declare `REF_CONSUMED` /
+`REF_BORROWED`); a `-tags refdebug` build keeps a ledger of every struct gomium
+allocates and fails `Close` with the allocation stack of anything still alive after
+`cef_shutdown`; and `cefdl -debug` fetches CEF's debug runtime, whose DCHECKs catch
+over-releases and leaked wrappers on CEF's side. How to run them:
+[`cmd/harness/README.md`](cmd/harness/README.md#reference-ledger-refdebug).
+
 **One package for the binding, one for the API.** cgo gives every package its own
 distinct set of C types, so splitting the binding by theme would mean converting
 `*C.cef_browser_t` and friends through `unsafe.Pointer` at every seam — exactly where
@@ -267,6 +285,7 @@ callers a slice they cannot convert.
 | `tools/cefshim` | shim generator (`go:generate`) |
 | `tools/cefbundle` | macOS `.app` bundle builder |
 | `tools/cefdiff` | C-API diff scripts for a CEF version upgrade |
+| `tools/refcheck` | refcount lint for the cgo boundary (CI) |
 | `examples/` | minimal, copyable hosts: `osr`, `window` |
 | `cmd/harness` | manual test harness, driven by `GOMIUM_*` env vars |
 | `Release/` | CEF runtime — downloaded, git-ignored |
@@ -280,8 +299,10 @@ callers a slice they cannot convert.
   when the window is closed.
 
 Both use the external message pump driven from the main thread, and both are meant to
-be copied. [`cmd/harness`](cmd/harness) is the opposite: the manual test driver with
-twenty-odd `GOMIUM_*` scenarios, documented in its own README.
+be copied. [`cmd/harness`](cmd/harness) is the opposite: the test driver with
+twenty-odd `GOMIUM_*` scenarios, documented in its own README. `cmd/harness/refdebug.sh`
+runs the offscreen scenarios unattended — against a `refdebug` build in CI, against
+CEF's debug runtime nightly.
 
 ## Platform support
 
@@ -313,118 +334,16 @@ CEF's own loop thread; macOS needs an `NSApplication` implementing `CefAppProtoc
 `.app` bundle with helper bundles, and its own event queue drained on every pump tick;
 Linux is offscreen-only and has never been run.
 
----
+## Known limitations
 
-## Road to a publishable package
-
-What still stands between this repository and something a third party could
-`go get` and depend on. Ordered roughly by what blocks whom.
-
-### Blocking `go get`
-
-- [x] **Fix the module path.** `go.mod` declares `github.com/timzifer/gomium`,
-      matching where the repository actually lives, so `go get` resolves it.
-- [x] **Add a LICENSE.** BSD 3-Clause ([`LICENSE`](LICENSE)).
-      [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) covers the vendored CEF
-      headers and the binaries `cefdl` downloads; `cefdl` unpacks CEF's
-      `CEF_LICENSE.txt` and Chromium's `CREDITS.html` next to the runtime, and
-      `cefbundle` copies them into the `.app`.
-- [x] **Tag a version.** Releases are tagged `v0.x` (`v0.5.0` onwards) — enough to
-      signal instability while still being resolvable.
-- [x] **Document the runtime dependency at install time.** `go get` cannot fetch the
-      CEF distribution; [In your own module](#in-your-own-module) documents
-      `go run github.com/timzifer/gomium/tools/cefdl`, which embeds the pinned version
-      and so runs from any module, not only from this repository root.
-
-### Correctness and confidence
-
-- [ ] **Real tests.** `internal/cef/app_test.go` holds a single smoke test — it runs
-      without a CEF distribution, since `New()` only reaches the local bridge functions
-      in `app_bridge.c`, never a trampoline. `internal/cefshim` covers the shim slot
-      contract, the per-architecture trampolines and generator drift, and
-      `facade_test.go` covers API completeness and import resolution per platform;
-      value conversion, process messages and handler lifetimes have no coverage.
-- [x] **CI.** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds, vets and
-      tests on ubuntu, windows and macOS, gates `gofmt`, and sweeps file selection
-      across four `GOOS` values. Nothing links against libcef and the headers are
-      vendored, so no CEF distribution is fetched. Every job asserts that cgo is
-      actually on before it builds — without that, a runner missing a C compiler
-      produces a green run that compiled none of the binding.
-
-      Trampoline coverage: linux/amd64 (ELF), windows/amd64 (PE-COFF) and macos-latest,
-      which is arm64 (Mach-O), plus a `gcc-aarch64-linux-gnu` cross build for
-      ELF/arm64. Only windows/arm64 is left, and that is the `#error` case. What CI
-      still cannot do is run against a real CEF distribution — that stays `cmd/harness`
-      by hand.
-- [x] **Version consistency check.** `cefdl/cef.version` and the vendored `include/` headers
-      must agree; `TestPinnedVersionMatchesHeaders` in `cefdl` checks the version string
-      and the numeric defines of `include/cef_version.h`, in CI.
-- [ ] **Race detector and leak checks.** The binding hands Go pointers across cgo
-      callbacks and does its own CEF refcounting — a `-race` run and a refcount/leak
-      test are the two things most likely to find real bugs here.
-- [ ] **Audit `unsafe` and refcounting.** Especially the registries
-      (`internal/cef/cef_process_message_registry.go`, `internal/cef/javascript_result_callback_registry.go`) and
-      every handler that outlives a browser.
-
-### Platform coverage
-
-- [x] **Linux and macOS runtime loading.** `LoadLibcef` binds through `dlopen`/`dlsym`
-      on both; the stub is left for platforms CEF publishes no builds for.
-- [x] **arm64 trampolines.** `internal/cefshim/cef_shim.S` carries an amd64 and an arm64 block, the
-      latter for Mach-O and ELF. PE-COFF arm64 (`windowsarm64`) still stops at an
-      `#error` — it needs its own relocation syntax.
-- [x] **`WithWindow` on macOS.** `internal/cef/browser_window_darwin.go` fills the macOS
-      `cef_window_info_t`, with `WithParentView` for hosts that bring their own
-      `NSView`. Everything except Windows and macOS still reports an error.
-- [ ] **Run it on real hardware.** macOS/arm64 is done — offscreen and windowed both
-      start, load, render and shut down cleanly out of a `tools/cefbundle` bundle.
-      Linux has still never been run; its assembly assembles and nothing more.
-- [x] **macOS packaging.** `tools/cefbundle` builds and ad-hoc signs the `.app` with
-      the framework and the five helper bundles.
-
-### Documentation
-
-- [x] **Per-platform integration guides.** [`docs/windows.md`](docs/windows.md),
-      [`docs/osx.md`](docs/osx.md), [`docs/linux.md`](docs/linux.md) — toolchain,
-      `main()` skeleton, message loop, packaging and troubleshooting each.
-- [x] **Package-level GoDoc.** `doc.go` covers the runtime binding, the process model
-      (including the `IsSubprocess` guard every helper process runs into) and the
-      threading rules.
-- [x] **Translate `docs/api.md` to English.**
-- [x] **Runnable `examples/`.** [`examples/osr`](examples/osr) and
-      [`examples/window`](examples/window), verified on Windows against 156.0.27.
-- [x] **Documented CEF upgrade procedure.** [`docs/upgrading-cef.md`](docs/upgrading-cef.md)
-      — pinning a version, regenerating the C-API headers, the three diff scripts in
-      `tools/cefdiff`, and why `CEF_API_VERSION` wants pinning before the next upgrade.
-      [`docs/cef-internals.md`](docs/cef-internals.md) keeps the crash findings that
-      explain the workarounds in `internal/cef/app_bridge.c`.
-- [x] **CHANGELOG.** [`CHANGELOG.md`](CHANGELOG.md), Keep a Changelog style, with the
-      pre-public history; maintained with every release.
-
-### Repository hygiene
-
-- [x] **Dissolved `upgrade-cef151/`** (~400 files of port notes). The durable half is
-      now [`docs/cef-internals.md`](docs/cef-internals.md) and
-      [`docs/upgrading-cef.md`](docs/upgrading-cef.md), the diff scripts are
-      `tools/cefdiff/`; the 62 → 151 diff dumps and the second copy of the CEF headers
-      are gone — the port they described is done.
-- [x] **Separate the harness from the examples.** `cmd/main` is now `cmd/harness`, with
-      its scenarios documented in [`cmd/harness/README.md`](cmd/harness/README.md); the
-      copyable code lives in `examples/`.
-
-### Distribution
-
-- [x] **Document shipping an application.** Which files from `Release/` are mandatory
-      and where they have to sit, per platform, in [`docs/`](docs/) — taken from CEF's
-      own redistribution lists. `bootstrap.exe` / `bootstrapc.exe` turn out to be for
-      client DLLs implementing `RunWinMain` / `RunConsoleMain`, so a Go executable
-      never ships them.
-- [ ] **Sandbox support.** `no_sandbox = 1` is hard-coded. Windows would need
-      `cef_sandbox.lib` linked in, macOS entitlements and a sandboxed helper build,
-      Linux the setuid `chrome-sandbox` — none of which fits the runtime-binding
-      design as it stands.
-- [ ] **Code signing beyond ad-hoc.** `cefbundle` signs ad-hoc, which runs locally and
-      nothing else; Developer ID, hardened runtime and notarization are open, and so is
-      Authenticode on Windows.
-- [ ] **Offline or mirrored downloads.** `cefdl` always talks to the Spotify CDN;
-      an air-gapped build needs a way to point it at a local mirror.
+- **Tests.** Unit tests cover the shim, the facade and the version pin; value
+  conversion and process messages have none. CEF itself runs in CI only in the
+  `refdebug (windows)` job (offscreen scenarios) and the nightly debug-runtime run —
+  windowed browsers, macOS and Linux need `cmd/harness` by hand.
+- **Race detector.** No `-race` run of the harness scenarios yet.
+- **Linux** has never started a browser.
+- **No sandbox.** `no_sandbox = 1` is hard-coded; `cef_sandbox.lib`, macOS entitlements
+  and the setuid `chrome-sandbox` do not fit the runtime-binding design as it stands.
+- **Code signing** is ad-hoc only (`cefbundle`); no Developer ID, notarization or
+  Authenticode.
+- **Downloads** always go to the Spotify CDN; `cefdl` has no mirror option.

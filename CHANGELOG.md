@@ -12,6 +12,8 @@ fetched — they are listed for the record of what changed when.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-19
+
 ### Added
 
 - `-tags refdebug`: a reference ledger for every struct gomium allocates. A reference
@@ -229,4 +231,6 @@ First tagged release.
   (`FetchRuntime`, package `cefdl`, `tools/cefdl`).
 - CI on Ubuntu, Windows and macOS.
 
+[Unreleased]: https://github.com/timzifer/gomium/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/timzifer/gomium/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/timzifer/gomium/releases/tag/v0.5.0
