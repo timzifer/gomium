@@ -557,6 +557,8 @@ func (b *browser) ExecuteDevToolsMethod(method string, params map[string]any) (i
 //
 // The result is handed to execute_dev_tools_method, which takes the reference
 // over - the caller only has to release it when that call never happens.
+//
+// refcheck:fresh
 func devToolsParams(params map[string]any) (*C.cef_dictionary_value_t, error) {
 	if len(params) == 0 {
 		return nil, nil

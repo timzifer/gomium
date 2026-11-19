@@ -3,6 +3,7 @@ package cef
 /*
 #include <string.h>
 #include "include/capi/cef_frame_capi.h"
+#include "memory.h"
 
 cef_string_userfree_t frame_get_name(struct _cef_frame_t* self) {
 	return self -> get_name(self);
@@ -41,7 +42,7 @@ int frame_is_valid(struct _cef_frame_t* self) {
 	return self -> is_valid(self);
 }
 
-void frame_load_request(struct _cef_frame_t* self, struct _cef_request_t* request) {
+void frame_load_request(struct _cef_frame_t* self, struct _cef_request_t* request REF_CONSUMED) {
 	self -> load_request(self, request);
 }
 
@@ -53,7 +54,7 @@ void frame_execute_java_script(struct _cef_frame_t* self, const cef_string_t* co
 	self -> execute_java_script(self, code, script_url, start_line);
 }
 
-void frame_send_process_message(struct _cef_frame_t* self, cef_process_id_t target_process, struct _cef_process_message_t* message) {
+void frame_send_process_message(struct _cef_frame_t* self, cef_process_id_t target_process, struct _cef_process_message_t* message REF_CONSUMED) {
 	self -> send_process_message(self, target_process, message);
 }
 */
@@ -197,6 +198,7 @@ func dataURLForHTML(source string) string {
 }
 
 func (f cefFrame) SendProcessMessage(id CefProcessId, message ProcessMessage) bool {
+	// refcheck:owned SendProcessMessage consumes the message
 	C.frame_send_process_message(f.cStruct, C.cef_process_id_t(id), message.ptr())
 	return true
 }

@@ -17,7 +17,7 @@ void cDevToolsObserverFree(struct _cef_dev_tools_message_observer_t*);
 // caller adds it beforehand) and returns the registration the caller owns.
 // Must run on the UI thread.
 struct _cef_registration_t* cBridgeBrowserAddDevToolsObserver(struct _cef_browser_t* browser,
-                                                              struct _cef_dev_tools_message_observer_t* observer);
+                                                              struct _cef_dev_tools_message_observer_t* observer REF_CONSUMED);
 
 // cBridgeBrowserSendDevToolsMessage sends one raw JSON method call. Returns
 // nonzero when CEF accepted it. Must run on the UI thread.

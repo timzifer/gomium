@@ -12,7 +12,7 @@ package cef
 int cef_v8_value_is_valid(struct _cef_v8_value_t* self){
 	return self -> is_valid(self);
 }
-int cef_v8_value_is_same(struct _cef_v8_value_t* self, struct _cef_v8_value_t* that){
+int cef_v8_value_is_same(struct _cef_v8_value_t* self, struct _cef_v8_value_t* that REF_BORROWED){
 	// CEF releases the reference an argument carries (CppToC::Unwrap),
 	// so the caller-owned |that| needs one of its own for the call.
 	if (that) ((cef_base_ref_counted_t*)that)->add_ref((cef_base_ref_counted_t*)that);
