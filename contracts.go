@@ -27,7 +27,7 @@ import (
 // substitution, so do not move a type out of types.go without checking what
 // names it in a signature here.
 //
-// The four func types work the same way, except that func types are only
+// The three func types work the same way, except that func types are only
 // convertible, not assignable - the conversion happens once inside the
 // wrapper in api.go and costs nothing at runtime. They qualify because each
 // appears only as a parameter of an exported top-level function.
@@ -222,8 +222,6 @@ type PopupHandler func(instance Browser, request PopupRequest) bool
 // WithIgnoreCertificateErrors(true) - CEF accepts everything then.
 type CertificateErrorHandler func(instance Browser, certError int, requestUrl string, callback CertificateErrorCallback) CertificateAction
 
-type ProcessMessageFactory func(message ProcessMessage) (any, error)
-
 type WorkerCallback func(delay int, worker Worker)
 
 // Compile-time proof that each declaration above is exactly its internal/cef
@@ -271,8 +269,6 @@ var (
 	_ = PopupHandler(cef.PopupHandler(nil))
 	_ = cef.CertificateErrorHandler(CertificateErrorHandler(nil))
 	_ = CertificateErrorHandler(cef.CertificateErrorHandler(nil))
-	_ = cef.ProcessMessageFactory(ProcessMessageFactory(nil))
-	_ = ProcessMessageFactory(cef.ProcessMessageFactory(nil))
 	_ = cef.WorkerCallback(WorkerCallback(nil))
 	_ = WorkerCallback(cef.WorkerCallback(nil))
 )

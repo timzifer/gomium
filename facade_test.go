@@ -28,6 +28,34 @@ var notReExported = map[string]bool{
 	"CefListValue":          true,
 	"CefBinaryValue":        true,
 	"BinaryValueFromBuffer": true,
+
+	// The V8 value wrappers behind bindings and JavaScript evaluation. They
+	// are converted to Exported before a caller sees a result, and no public
+	// signature takes or returns one (#19).
+	"Value":          true,
+	"ArrayValue":     true,
+	"BooleanValue":   true,
+	"DateValue":      true,
+	"DoubleValue":    true,
+	"FunctionValue":  true,
+	"IntValue":       true,
+	"NullValue":      true,
+	"ObjectValue":    true,
+	"StringValue":    true,
+	"UintValue":      true,
+	"UndefinedValue": true,
+	"CreateObject":   true,
+	"Exporter":       true,
+	"NewExporter":    true,
+
+	// Process-message plumbing of bindings and ExecuteJavaScriptWithResult.
+	// A caller cannot build a ProcessMessage, so registering a factory or
+	// dispatching one had no use outside the binding (#19).
+	"ProcessMessage":            true,
+	"ProcessMessageFactory":     true,
+	"RegisterMessageIdentifier": true,
+	"Dispatcher":                true,
+	"DispatchWith":              true,
 }
 
 // TestFacadeCoversBinding fails when internal/cef grows an exported identifier

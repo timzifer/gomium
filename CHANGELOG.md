@@ -12,6 +12,22 @@ fetched — they are listed for the record of what changed when.
 
 ## [Unreleased]
 
+### Removed
+
+- **Breaking:** internal plumbing that had leaked into the root API (#19):
+  - `From(unsafe.Pointer) *Request` — a raw-pointer constructor nothing outside the
+    binding could use correctly.
+  - `WithSingleProcess` — a no-op since CEF 151.
+  - The V8 value wrappers `Value`, `ObjectValue`, `ArrayValue`, `BooleanValue`,
+    `DateValue`, `DoubleValue`, `FunctionValue`, `IntValue`, `NullValue`,
+    `StringValue`, `UintValue`, `UndefinedValue`, and `CreateObject`, `Exporter`,
+    `NewExporter`. No public signature took or returned them; results reach callers
+    as `Exported`.
+  - Process messages: `RegisterMessageIdentifier`, `ProcessMessageFactory`,
+    `ProcessMessage`, `Dispatcher`, `DispatchWith`, and `SendProcessMessage` on
+    `CefBrowser` / `CefFrame`. A caller could not build a `ProcessMessage`, so none of
+    it was usable outside the binding.
+
 ### Fixed
 
 - A binding call still running when `CefApp.Close` reaches `cef_shutdown` no longer

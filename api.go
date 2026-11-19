@@ -7,7 +7,6 @@ import (
 	"image/draw"
 	"net/url"
 	"time"
-	"unsafe"
 )
 
 // Every exported function of the binding, forwarded. These are wrappers
@@ -23,16 +22,12 @@ func CEFVersion() string { return cef.CEFVersion() }
 
 func CefCurrentlyOn(id CefThreadId) bool { return cef.CefCurrentlyOn(id) }
 
-func CreateObject() *ObjectValue { return cef.CreateObject() }
-
 // ExecuteSubprocess runs the CEF helper-process loop and terminates the
 // process with its exit code - it does not return on success. Call it from
 // main() when IsSubprocess() is true, before any other initialization.
 // Returns an error only when setup fails or the process is not actually a
 // CEF helper process.
 func ExecuteSubprocess(opts ...Option) error { return cef.ExecuteSubprocess(opts...) }
-
-func From(ptr unsafe.Pointer) *Request { return cef.From(ptr) }
 
 func Get() (CefApp, bool) { return cef.Get() }
 
@@ -55,8 +50,6 @@ func GlobalRequestContext() (RequestContext, error) { return cef.GlobalRequestCo
 func IsSubprocess() bool { return cef.IsSubprocess() }
 
 func New(opts ...Option) (CefApp, error) { return cef.New(opts...) }
-
-func NewExporter(val Value) *Exporter { return cef.NewExporter(val) }
 
 func NewFocusEvent(gained bool) Event { return cef.NewFocusEvent(gained) }
 
@@ -95,10 +88,6 @@ func NewResizedEvent() Event { return cef.NewResizedEvent() }
 
 func NewScrollEvent(x, y int, deltaX, deltaY int) Event {
 	return cef.NewScrollEvent(x, y, deltaX, deltaY)
-}
-
-func RegisterMessageIdentifier(identifier string, factoryMethod ProcessMessageFactory) error {
-	return cef.RegisterMessageIdentifier(identifier, cef.ProcessMessageFactory(factoryMethod))
 }
 
 func SetDebugLogger(zLogger zerolog.Logger) { cef.SetDebugLogger(zLogger) }
@@ -317,13 +306,6 @@ func WithLocalesDirPath(path string) Option { return cef.WithLocalesDirPath(path
 
 func WithLogSeverity(severity LogSeverity) Option { return cef.WithLogSeverity(severity) }
 
-/*
-	func WithV8Option(option v8.Option) Option {
-		return func(a *app) {
-			a.v8options = append(a.v8options, option)
-		}
-	}
-*/
 func WithLogger(logger zerolog.Logger) Option { return cef.WithLogger(logger) }
 
 func WithMessagePumpWorker(pumpWorker WorkerCallback) Option {
@@ -382,12 +364,6 @@ func WithResourcesDirPath(path string) Option { return cef.WithResourcesDirPath(
 // live in - the global one and all request-context paths (see
 // WithContextCachePath). Defaults to the WithCachePath value.
 func WithRootCachePath(rootCachePath string) Option { return cef.WithRootCachePath(rootCachePath) }
-
-// Deprecated: single-process mode no longer exists in CEF 151 - Chromium
-// removed it. The option is kept for source compatibility and has no effect;
-// CEF always runs multi-process now. Note that extension functions therefore
-// execute in the render subprocess, not in the browser process.
-func WithSingleProcess(singleProcess bool) Option { return cef.WithSingleProcess(singleProcess) }
 
 func WithUniversalAccessFromFileUrls(fileAccessFromFileUrls bool) BrowserOption {
 	return cef.WithUniversalAccessFromFileUrls(fileAccessFromFileUrls)

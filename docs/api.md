@@ -84,7 +84,6 @@ running (e.g. the terminal app), `cef_initialize` of the second one fails with
 | `WithMessagePumpWorker(cb)` / `WithMessagePumpWorkerInterval(d)` | external message pump (Fyne main loop integration) |
 | `WithMultiThreadedMessageLoop(bool)` | CEF's own loop thread (Windows) instead of an external pump |
 | `WithInitializationTimeout(d)` | timeout for `New` |
-| `WithSingleProcess(bool)` | single-process mode (debugging only) |
 | `WithModuleHandle(h)` | Windows: module handle (`GetModuleHandle(nil)`) |
 | `WithCustomScheme(name, options)` | custom scheme (`help://`, `app://`) — see below |
 | `WithV8Listener(l)` | renderer: V8 context created/released — see [V8 lifecycle](#v8-lifecycle) |
@@ -643,7 +642,7 @@ do not block in them; browser and frame are only valid during the call.
 ## Low level (`Cef*` types)
 
 `Browser.Cef()` returns `CefBrowser` (borrowed — do not hold it past the
-browser's close): `MainFrame()`, `Frames()`, `SendProcessMessage(...)`,
+browser's close): `MainFrame()`, `Frames()`,
 `IsPopup()`, `StopLoad()`, …
 `CefFrame`: `LoadUrl`, `ExecuteJavaScript(WithResult)`, `V8()`, `IsMain()`, …
 
@@ -653,7 +652,6 @@ Rules:
   documents it; the high-level API (`Browser`, handler snapshots) manages itself.
 - `CefCurrentlyOn(TidUI / TidIO / TidRenderer)` for thread assertions.
 - `SetDebugLogger` / `SetMemoryLogger` for bridge/refcount tracing.
-- Process messages: `RegisterMessageIdentifier` + `Dispatcher`/`DispatchWith`.
 
 ---
 
