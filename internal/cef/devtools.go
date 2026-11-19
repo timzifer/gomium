@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 	"unsafe"
@@ -30,8 +31,9 @@ type DevTools interface {
 	// call fails with ErrDevToolsDetached - CEF does not deliver that result.
 	Call(ctx context.Context, method string, params any) (json.RawMessage, error)
 	// On registers fn for an event of the protocol, e.g. "Page.loadEventFired".
-	// fn runs on a goroutine that delivers events in order. The returned
-	// function removes the handler again.
+	// fn runs on a goroutine that delivers events in order; return quickly -
+	// past 4096 undelivered events new ones are dropped with a warning. The
+	// returned function removes the handler again.
 	On(event string, fn func(params json.RawMessage)) (cancel func())
 }
 
@@ -66,6 +68,11 @@ const devToolsBootstrapMethod = "Page.getFrameTree"
 // agent cannot cause a busy loop.
 const devToolsReattachDelay = 200 * time.Millisecond
 
+// devToolsMaxQueued bounds the events waiting for a slow handler. Past it new
+// events are dropped (and counted) instead of growing the queue without limit
+// - an enabled Network or DOM domain can emit thousands per second.
+const devToolsMaxQueued = 4096
+
 type devToolsReply struct {
 	result json.RawMessage
 	err    error
@@ -89,10 +96,11 @@ type devToolsSession struct {
 	subs    map[string]map[int]func(json.RawMessage)
 	nextSub int
 
-	qmu   sync.Mutex
-	queue []devToolsEvent
-	wake  chan struct{}
-	done  chan struct{}
+	qmu     sync.Mutex
+	queue   []devToolsEvent
+	dropped int // events dropped since the last warning
+	wake    chan struct{}
+	done    chan struct{}
 }
 
 func newDevToolsSession(b *browser) *devToolsSession {
@@ -127,7 +135,17 @@ func (s *devToolsSession) pump() {
 			ev := s.queue[0]
 			s.queue[0] = devToolsEvent{}
 			s.queue = s.queue[1:]
+			if len(s.queue) == 0 {
+				// let a burst's backing array go
+				s.queue = nil
+			}
+			dropped := s.dropped
+			s.dropped = 0
 			s.qmu.Unlock()
+
+			if dropped > 0 {
+				devToolsLogger().Warn("devtools: events dropped, a handler is too slow", "dropped", dropped, "limit", devToolsMaxQueued)
+			}
 
 			s.mu.Lock()
 			var handlers []func(json.RawMessage)
@@ -143,7 +161,20 @@ func (s *devToolsSession) pump() {
 }
 
 func (s *devToolsSession) enqueue(ev devToolsEvent) {
+	// events nobody listens to never reach the queue
+	s.mu.Lock()
+	wanted := len(s.subs[ev.method]) > 0
+	s.mu.Unlock()
+	if !wanted {
+		return
+	}
+
 	s.qmu.Lock()
+	if len(s.queue) >= devToolsMaxQueued {
+		s.dropped++
+		s.qmu.Unlock()
+		return
+	}
 	s.queue = append(s.queue, ev)
 	s.qmu.Unlock()
 	select {
@@ -432,4 +463,12 @@ func (b *browser) detachDevTools() {
 		s.close()
 	}
 	releaseBase(unsafe.Pointer(registration))
+}
+
+// devToolsLogger is the app's logger, or a discarding one between apps.
+func devToolsLogger() *slog.Logger {
+	if app := getInstance(); app != nil {
+		return app.options.logger
+	}
+	return nopLogger()
 }

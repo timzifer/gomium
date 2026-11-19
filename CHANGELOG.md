@@ -68,6 +68,9 @@ fetched — they are listed for the record of what changed when.
   multi-threaded process, so every GPU and renderer launch failed and the browser
   exited with "GPU process isn't usable"; gomium now appends `--no-zygote` on Linux.
   A `refdebug (linux)` CI job runs the harness scenarios on Ubuntu (#24).
+- DevTools: events without a handler are no longer queued, the queue of undelivered
+  events is capped at 4096 (further events are dropped with a warning), and a drained
+  queue releases its backing array (#26).
 
 ## [0.6.0] - 2026-11-19
 
