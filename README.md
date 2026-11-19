@@ -43,9 +43,9 @@ to the 156.0.27 distributions, but no build or run was done there.
 
 > **Status: pre-release (`v0.x`).** The API is not stable yet — expect breaking changes
 > between minor versions; [`CHANGELOG.md`](CHANGELOG.md) lists them per release. Releases
-> are tagged (`v0.5.0` onwards), so consumers can pin a version instead of a commit. Windows and macOS/arm64 have both started a real browser;
-> Linux has never run one. See
-> [Road to a publishable package](#road-to-a-publishable-package) for the concrete gaps.
+> are tagged (`v0.5.0` onwards), so consumers can pin a version instead of a commit.
+> Windows and macOS/arm64 have both started a real browser; Linux has never run one.
+> See [Known limitations](#known-limitations).
 
 ## Requirements
 
@@ -334,129 +334,16 @@ CEF's own loop thread; macOS needs an `NSApplication` implementing `CefAppProtoc
 `.app` bundle with helper bundles, and its own event queue drained on every pump tick;
 Linux is offscreen-only and has never been run.
 
----
+## Known limitations
 
-## Road to a publishable package
-
-What still stands between this repository and something a third party could
-`go get` and depend on. Ordered roughly by what blocks whom.
-
-### Blocking `go get`
-
-- [x] **Fix the module path.** `go.mod` declares `github.com/timzifer/gomium`,
-      matching where the repository actually lives, so `go get` resolves it.
-- [x] **Add a LICENSE.** BSD 3-Clause ([`LICENSE`](LICENSE)).
-      [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) covers the vendored CEF
-      headers and the binaries `cefdl` downloads; `cefdl` unpacks CEF's
-      `CEF_LICENSE.txt` and Chromium's `CREDITS.html` next to the runtime, and
-      `cefbundle` copies them into the `.app`.
-- [x] **Tag a version.** Releases are tagged `v0.x` (`v0.5.0` onwards) — enough to
-      signal instability while still being resolvable.
-- [x] **Document the runtime dependency at install time.** `go get` cannot fetch the
-      CEF distribution; [In your own module](#in-your-own-module) documents
-      `go run github.com/timzifer/gomium/tools/cefdl`, which embeds the pinned version
-      and so runs from any module, not only from this repository root.
-
-### Correctness and confidence
-
-- [ ] **Real tests.** `internal/cef/app_test.go` holds a single smoke test — it runs
-      without a CEF distribution, since `New()` only reaches the local bridge functions
-      in `app_bridge.c`, never a trampoline. `internal/cefshim` covers the shim slot
-      contract, the per-architecture trampolines and generator drift, and
-      `facade_test.go` covers API completeness and import resolution per platform;
-      value conversion and process messages have no unit tests, and handler lifetimes
-      are covered only by the `refdebug` scenario run.
-- [x] **CI.** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) builds, vets and
-      tests on ubuntu, windows and macOS, gates `gofmt`, and sweeps file selection
-      across four `GOOS` values. Nothing links against libcef and the headers are
-      vendored, so the build jobs fetch no CEF distribution. Every job asserts that cgo is
-      actually on before it builds — without that, a runner missing a C compiler
-      produces a green run that compiled none of the binding.
-
-      Trampoline coverage: linux/amd64 (ELF), windows/amd64 (PE-COFF) and macos-latest,
-      which is arm64 (Mach-O), plus a `gcc-aarch64-linux-gnu` cross build for
-      ELF/arm64. Only windows/arm64 is left, and that is the `#error` case.
-
-      One job does run CEF: `refdebug (windows)` fetches the distribution and runs the
-      offscreen harness scenarios against a `-tags refdebug` build, and `refcheck` lints
-      the refcounting on every run. [`cef-debug.yml`](.github/workflows/cef-debug.yml)
-      repeats the scenarios nightly against CEF's debug runtime;
-      [`cef-review.yml`](.github/workflows/cef-review.yml) adds an advisory agent review
-      to pull requests touching `internal/cef` once an API key is configured. Windowed
-      browsers, macOS and Linux still need `cmd/harness` by hand.
-- [x] **Version consistency check.** `cefdl/cef.version` and the vendored `include/` headers
-      must agree; `TestPinnedVersionMatchesHeaders` in `cefdl` checks the version string
-      and the numeric defines of `include/cef_version.h`, in CI.
-- [x] **Leak checks.** The `refdebug` ledger (gomium's structs, per pull request) and
-      CEF's debug runtime (CEF's wrappers, nightly) both run the harness scenarios and
-      fail on a leak or an over-release; `tools/refcheck` lints the cgo boundary.
-- [ ] **Race detector.** The binding hands Go pointers across cgo callbacks; a `-race`
-      run of the harness scenarios has not been done yet.
-- [x] **Audit `unsafe` and refcounting.** Done for the registries and every handler
-      that outlives a browser; its findings — bindings on the UI thread, V8 listeners
-      off the renderer main thread, the popup client leak and smaller lifecycle gaps —
-      are fixed in 0.6.0. The audit prompt lives on as the optional agent review
-      (`.github/claude-review/cef-audit.md`).
-
-### Platform coverage
-
-- [x] **Linux and macOS runtime loading.** `LoadLibcef` binds through `dlopen`/`dlsym`
-      on both; the stub is left for platforms CEF publishes no builds for.
-- [x] **arm64 trampolines.** `internal/cefshim/cef_shim.S` carries an amd64 and an arm64 block, the
-      latter for Mach-O and ELF. PE-COFF arm64 (`windowsarm64`) still stops at an
-      `#error` — it needs its own relocation syntax.
-- [x] **`WithWindow` on macOS.** `internal/cef/browser_window_darwin.go` fills the macOS
-      `cef_window_info_t`, with `WithParentView` for hosts that bring their own
-      `NSView`. Everything except Windows and macOS still reports an error.
-- [ ] **Run it on real hardware.** macOS/arm64 is done — offscreen and windowed both
-      start, load, render and shut down cleanly out of a `tools/cefbundle` bundle.
-      Linux has still never been run; its assembly assembles and nothing more.
-- [x] **macOS packaging.** `tools/cefbundle` builds and ad-hoc signs the `.app` with
-      the framework and the five helper bundles.
-
-### Documentation
-
-- [x] **Per-platform integration guides.** [`docs/windows.md`](docs/windows.md),
-      [`docs/osx.md`](docs/osx.md), [`docs/linux.md`](docs/linux.md) — toolchain,
-      `main()` skeleton, message loop, packaging and troubleshooting each.
-- [x] **Package-level GoDoc.** `doc.go` covers the runtime binding, the process model
-      (including the `IsSubprocess` guard every helper process runs into) and the
-      threading rules.
-- [x] **Translate `docs/api.md` to English.**
-- [x] **Runnable `examples/`.** [`examples/osr`](examples/osr) and
-      [`examples/window`](examples/window), verified on Windows against 156.0.27.
-- [x] **Documented CEF upgrade procedure.** [`docs/upgrading-cef.md`](docs/upgrading-cef.md)
-      — pinning a version, regenerating the C-API headers, the three diff scripts in
-      `tools/cefdiff`, and why `CEF_API_VERSION` wants pinning before the next upgrade.
-      [`docs/cef-internals.md`](docs/cef-internals.md) keeps the crash findings that
-      explain the workarounds in `internal/cef/app_bridge.c`.
-- [x] **CHANGELOG.** [`CHANGELOG.md`](CHANGELOG.md), Keep a Changelog style, with the
-      pre-public history; maintained with every release.
-
-### Repository hygiene
-
-- [x] **Dissolved `upgrade-cef151/`** (~400 files of port notes). The durable half is
-      now [`docs/cef-internals.md`](docs/cef-internals.md) and
-      [`docs/upgrading-cef.md`](docs/upgrading-cef.md), the diff scripts are
-      `tools/cefdiff/`; the 62 → 151 diff dumps and the second copy of the CEF headers
-      are gone — the port they described is done.
-- [x] **Separate the harness from the examples.** `cmd/main` is now `cmd/harness`, with
-      its scenarios documented in [`cmd/harness/README.md`](cmd/harness/README.md); the
-      copyable code lives in `examples/`.
-
-### Distribution
-
-- [x] **Document shipping an application.** Which files from `Release/` are mandatory
-      and where they have to sit, per platform, in [`docs/`](docs/) — taken from CEF's
-      own redistribution lists. `bootstrap.exe` / `bootstrapc.exe` turn out to be for
-      client DLLs implementing `RunWinMain` / `RunConsoleMain`, so a Go executable
-      never ships them.
-- [ ] **Sandbox support.** `no_sandbox = 1` is hard-coded. Windows would need
-      `cef_sandbox.lib` linked in, macOS entitlements and a sandboxed helper build,
-      Linux the setuid `chrome-sandbox` — none of which fits the runtime-binding
-      design as it stands.
-- [ ] **Code signing beyond ad-hoc.** `cefbundle` signs ad-hoc, which runs locally and
-      nothing else; Developer ID, hardened runtime and notarization are open, and so is
-      Authenticode on Windows.
-- [ ] **Offline or mirrored downloads.** `cefdl` always talks to the Spotify CDN;
-      an air-gapped build needs a way to point it at a local mirror.
+- **Tests.** Unit tests cover the shim, the facade and the version pin; value
+  conversion and process messages have none. CEF itself runs in CI only in the
+  `refdebug (windows)` job (offscreen scenarios) and the nightly debug-runtime run —
+  windowed browsers, macOS and Linux need `cmd/harness` by hand.
+- **Race detector.** No `-race` run of the harness scenarios yet.
+- **Linux** has never started a browser.
+- **No sandbox.** `no_sandbox = 1` is hard-coded; `cef_sandbox.lib`, macOS entitlements
+  and the setuid `chrome-sandbox` do not fit the runtime-binding design as it stands.
+- **Code signing** is ad-hoc only (`cefbundle`); no Developer ID, notarization or
+  Authenticode.
+- **Downloads** always go to the Spotify CDN; `cefdl` has no mirror option.
