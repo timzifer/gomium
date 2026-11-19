@@ -188,13 +188,13 @@ func WithBinding(path string, fn any) Option {
 // WithBindingGuard sets which binding calls of the browser's frames may run.
 // Without a guard every call is rejected.
 func WithBindingGuard(guard BindingGuard) ClientOption {
-	return cef.WithBindingGuard(guard)
+	return cef.WithBindingGuard(cef.BindingGuard(guard))
 }
 
 // WithDefaultBindingGuard sets the guard for every browser without a guard of
 // its own (WithBindingGuard), popup browsers included.
 func WithDefaultBindingGuard(guard BindingGuard) Option {
-	return cef.WithDefaultBindingGuard(guard)
+	return cef.WithDefaultBindingGuard(cef.BindingGuard(guard))
 }
 
 // SameOrigin reports whether a and b share scheme, host and effective port.
