@@ -57,6 +57,22 @@ func NewImageRenderHandler(img draw.Image, imageChanged func(image.Image)) Rende
 	return cef.NewImageRenderHandler(img, imageChanged)
 }
 
+// NewFrameRenderHandler returns a RenderHandler that paints into one
+// width x height RGBA surface it owns and calls onFrame after every change,
+// with the changed rectangles in view coordinates.
+//
+// frame and dirty are borrowed: both are valid only until onFrame returns,
+// and the next paint reuses them. Copy what you keep - typically only the
+// dirty rectangles. In return nothing is allocated per paint, where
+// NewImageRenderHandler copies the whole view for every callback (8 MB per
+// frame at 1080p). Popups are composited like there.
+//
+// onFrame runs on the CEF UI thread with the handler's lock held: keep it
+// short and do not call Resize from it.
+func NewFrameRenderHandler(width, height int, onFrame func(frame *image.RGBA, dirty []image.Rectangle)) RenderHandler {
+	return cef.NewFrameRenderHandler(width, height, onFrame)
+}
+
 func NewKeyDownEvent(nativeKeyCode, windowsKeyCode int, isSystemKey bool, modifiers ...KeyEventModifier) Event {
 	return cef.NewKeyDownEvent(nativeKeyCode, windowsKeyCode, isSystemKey, modifiers...)
 }
