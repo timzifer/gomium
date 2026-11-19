@@ -3,6 +3,7 @@ package cef
 /*
 #include <string.h>
 #include "include/capi/cef_browser_capi.h"
+#include "memory.h"
 #include "include/internal/cef_types.h"
 
 void browser_reload(struct _cef_browser_t* self) {
@@ -16,7 +17,7 @@ int browser_get_identifier(struct _cef_browser_t* self) {
 	return self -> get_identifier(self);
 }
 
-int browser_is_same(struct _cef_browser_t* self, struct _cef_browser_t* that) {
+int browser_is_same(struct _cef_browser_t* self, struct _cef_browser_t* that REF_BORROWED) {
 	// CEF releases the reference an argument carries (CppToC::Unwrap),
 	// so the caller-owned |that| needs one of its own for the call.
 	if (that) ((cef_base_ref_counted_t*)that)->add_ref((cef_base_ref_counted_t*)that);
@@ -59,7 +60,7 @@ void browser_get_frame_names(struct _cef_browser_t* self, cef_string_list_t name
 	return self -> get_frame_names(self, names);
 }
 
-int browser_send_process_message(struct _cef_browser_t* self, cef_process_id_t target_process, struct _cef_process_message_t* message) {
+int browser_send_process_message(struct _cef_browser_t* self, cef_process_id_t target_process, struct _cef_process_message_t* message REF_CONSUMED) {
 	// cef_browser_t lost send_process_message - route through the main frame
 	struct _cef_frame_t* main_frame = self -> get_main_frame(self);
 	if (main_frame == NULL) {
@@ -108,6 +109,7 @@ type (
 )
 
 func (c cefBrowser) SendProcessMessage(id CefProcessId, message ProcessMessage) bool {
+	// refcheck:owned SendProcessMessage consumes the message
 	return C.browser_send_process_message(c.cStruct, C.cef_process_id_t(id), message.ptr()) != 0
 }
 

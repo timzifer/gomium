@@ -41,7 +41,7 @@ void cBridgeBrowserPrintToPdf(struct _cef_browser_t *browser,
                               const cef_string_t* path,
                               int landscape,
                               int printBackground,
-                              struct _cef_pdf_print_callback_t* callback);
+                              struct _cef_pdf_print_callback_t* callback REF_CONSUMED);
 
 // The DevTools bridge builds the parameter dictionary in single steps so the
 // Go side can keep its map[string]any shape. cBridgeBrowserExecuteDevToolsMethod
@@ -55,6 +55,6 @@ void cBridgeDictionaryRelease(struct _cef_dictionary_value_t *dictionary);
 
 int cBridgeBrowserExecuteDevToolsMethod(struct _cef_browser_t *browser,
                                         const cef_string_t* method,
-                                        struct _cef_dictionary_value_t *params);
+                                        struct _cef_dictionary_value_t *params REF_CONSUMED);
 
 #endif

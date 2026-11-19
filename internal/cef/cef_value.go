@@ -16,14 +16,14 @@ int value_is_read_only(struct _cef_value_t* self) {
 	return self -> is_read_only(self);
 }
 
-int value_is_same(struct _cef_value_t* self, struct _cef_value_t* that) {
+int value_is_same(struct _cef_value_t* self, struct _cef_value_t* that REF_BORROWED) {
 	// CEF releases the reference an argument carries (CppToC::Unwrap),
 	// so the caller-owned |that| needs one of its own for the call.
 	if (that) ((cef_base_ref_counted_t*)that)->add_ref((cef_base_ref_counted_t*)that);
 	return self -> is_same(self, that);
 }
 
-int value_is_equal(struct _cef_value_t* self, struct _cef_value_t* that) {
+int value_is_equal(struct _cef_value_t* self, struct _cef_value_t* that REF_BORROWED) {
 	// CEF releases the reference an argument carries (CppToC::Unwrap),
 	// so the caller-owned |that| needs one of its own for the call.
 	if (that) ((cef_base_ref_counted_t*)that)->add_ref((cef_base_ref_counted_t*)that);
@@ -86,15 +86,15 @@ int value_set_string(struct _cef_value_t* self, const cef_string_t* value) {
 	return self -> set_string(self, value);
 }
 
-int value_set_binary(struct _cef_value_t* self, struct _cef_binary_value_t* value) {
+int value_set_binary(struct _cef_value_t* self, struct _cef_binary_value_t* value REF_CONSUMED) {
 	return self -> set_binary(self, value);
 }
 
-int value_set_dictionary(struct _cef_value_t* self, struct _cef_dictionary_value_t* value) {
+int value_set_dictionary(struct _cef_value_t* self, struct _cef_dictionary_value_t* value REF_CONSUMED) {
 	return self -> set_dictionary(self, value);
 }
 
-int value_set_list(struct _cef_value_t* self, struct _cef_list_value_t* value) {
+int value_set_list(struct _cef_value_t* self, struct _cef_list_value_t* value REF_CONSUMED) {
 	return self -> set_list(self, value);
 }
 
@@ -133,6 +133,8 @@ type (
 		SetInt(int) bool
 		SetDouble(float64) bool
 		SetString(string) bool
+		// SetBinary and SetList consume their argument - it must not be
+		// used or released afterwards.
 		SetBinary(CefBinaryValue) bool
 		SetList(value CefListValue) bool
 
@@ -230,10 +232,12 @@ func (c cefValue) SetBinary(b CefBinaryValue) bool {
 	if b == nil {
 		return false
 	}
+	// refcheck:owned the value's reference goes to the container
 	return C.value_set_binary(c.cStruct, b.ptr()) != 0
 }
 
 func (c cefValue) SetList(value CefListValue) bool {
+	// refcheck:owned the value's reference goes to the container
 	return C.value_set_list(c.cStruct, value.ptr()) != 0
 }
 

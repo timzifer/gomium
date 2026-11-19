@@ -18,6 +18,10 @@ fetched — they are listed for the record of what changed when.
   operation on a freed struct panics with the stack that freed it, and `CefApp.Close`
   fails with the allocation stacks of structs still alive after `cef_shutdown`. CI
   runs the harness scenarios with it on Windows (`cmd/harness/refdebug.sh`).
+- `tools/refcheck`: a lint for the reference counting at the cgo boundary, run in CI.
+  Callback parameters must be released or handed off, and a C call that passes a
+  reference on to CEF needs one of its own; bridge parameters say which with
+  `REF_CONSUMED` / `REF_BORROWED`.
 - `WithV8Listener`: registers a V8 context listener in both processes. Before, a host
   could not reach the render process at all — `AddV8Listener` on the browser-process
   app never fires, since V8 contexts exist only in the renderer.

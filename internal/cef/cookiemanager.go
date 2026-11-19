@@ -322,6 +322,7 @@ func registerAck(callback unsafe.Pointer) chan int {
 
 func (m cookieManager) Cookies() ([]Cookie, error) {
 	return m.visitCookies(func(manager *C.cef_cookie_manager_t, visitor *C.cef_cookie_visitor_t) C.int {
+		// refcheck:owned visitCookies hands over the visitor it created
 		return C.cCookieManagerVisitAllCookies(manager, visitor)
 	})
 }
@@ -335,6 +336,7 @@ func (m cookieManager) CookiesForUrl(url string, includeHttpOnly bool) ([]Cookie
 		include = 1
 	}
 	return m.visitCookies(func(manager *C.cef_cookie_manager_t, visitor *C.cef_cookie_visitor_t) C.int {
+		// refcheck:owned visitCookies hands over the visitor it created
 		return C.cCookieManagerVisitUrlCookies(manager, cUrl, include, visitor)
 	})
 }

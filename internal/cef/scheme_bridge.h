@@ -15,6 +15,6 @@ void cSchemeHandlerFactoryFree(struct _cef_scheme_handler_factory_t* factory);
 int cClearGlobalSchemeHandlerFactories(void);
 int cRequestContextRegisterSchemeHandlerFactory(struct _cef_request_context_t* context,
                                                 const char* scheme,
-                                                struct _cef_scheme_handler_factory_t* factory);
+                                                struct _cef_scheme_handler_factory_t* factory REF_CONSUMED);
 
 #endif

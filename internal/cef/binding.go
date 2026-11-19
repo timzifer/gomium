@@ -551,7 +551,7 @@ func handleBindingCallResponse(response *bindingCallResponse) {
 		rejectPromise(pending.promise, err.Error())
 		return
 	}
-	// resolve consumes the reference to the value, like set_value_bykey does
+	// refcheck:owned resolve consumes the reference to the value, like set_value_bykey does
 	C.js_resolve_promise(pending.promise, value.native())
 }
 

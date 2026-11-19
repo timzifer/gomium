@@ -16,14 +16,14 @@ int list_value_is_read_only(struct _cef_list_value_t* self) {
 	return self -> is_read_only(self);
 }
 
-int list_value_is_same(struct _cef_list_value_t* self, struct _cef_list_value_t* that) {
+int list_value_is_same(struct _cef_list_value_t* self, struct _cef_list_value_t* that REF_BORROWED) {
 	// CEF releases the reference an argument carries (CppToC::Unwrap),
 	// so the caller-owned |that| needs one of its own for the call.
 	if (that) ((cef_base_ref_counted_t*)that)->add_ref((cef_base_ref_counted_t*)that);
 	return self -> is_same(self, that);
 }
 
-int list_value_is_equal(struct _cef_list_value_t* self, struct _cef_list_value_t* that) {
+int list_value_is_equal(struct _cef_list_value_t* self, struct _cef_list_value_t* that REF_BORROWED) {
 	// CEF releases the reference an argument carries (CppToC::Unwrap),
 	// so the caller-owned |that| needs one of its own for the call.
 	if (that) ((cef_base_ref_counted_t*)that)->add_ref((cef_base_ref_counted_t*)that);
@@ -87,7 +87,7 @@ struct _cef_list_value_t* list_value_get_list(struct _cef_list_value_t* self, si
 	return self -> get_list(self, index);
 }
 
-int list_value_set_value(struct _cef_list_value_t* self, size_t index, struct _cef_value_t* value) {
+int list_value_set_value(struct _cef_list_value_t* self, size_t index, struct _cef_value_t* value REF_CONSUMED) {
 	return self -> set_value(self, index, value);
 }
 
@@ -111,15 +111,15 @@ int list_value_set_string(struct _cef_list_value_t* self, size_t index, const ce
 	return self -> set_string(self, index, value);
 }
 
-int list_value_set_binary(struct _cef_list_value_t* self, size_t index, struct _cef_binary_value_t* value) {
+int list_value_set_binary(struct _cef_list_value_t* self, size_t index, struct _cef_binary_value_t* value REF_CONSUMED) {
 	return self -> set_binary(self, index, value);
 }
 
-int list_value_set_dictionary(struct _cef_list_value_t* self, size_t index, struct _cef_dictionary_value_t* value) {
+int list_value_set_dictionary(struct _cef_list_value_t* self, size_t index, struct _cef_dictionary_value_t* value REF_CONSUMED) {
 	return self -> set_dictionary(self, index, value);
 }
 
-int list_value_set_list(struct _cef_list_value_t* self, size_t index, struct _cef_list_value_t* value) {
+int list_value_set_list(struct _cef_list_value_t* self, size_t index, struct _cef_list_value_t* value REF_CONSUMED) {
 	return self -> set_list(self, index, value);
 }
 
@@ -162,6 +162,8 @@ type (
 		SetInt(index int, value int) bool
 		SetDouble(index int, value float64) bool
 		SetString(index int, value string) bool
+		// SetList and SetBinary consume value - it must not be used or
+		// released afterwards.
 		SetList(index int, value CefListValue) bool
 		SetBinary(index int, value CefBinaryValue) bool
 
@@ -291,10 +293,12 @@ func (l cefListValue) SetString(index int, value string) bool {
 }
 
 func (l cefListValue) SetList(index int, value CefListValue) bool {
+	// refcheck:owned the value's reference goes to the container
 	return C.list_value_set_list(l.cStruct, C.size_t(index), value.ptr()) != 0
 }
 
 func (l cefListValue) SetBinary(index int, value CefBinaryValue) bool {
+	// refcheck:owned the value's reference goes to the container
 	return C.list_value_set_binary(l.cStruct, C.size_t(index), value.ptr()) != 0
 }
 

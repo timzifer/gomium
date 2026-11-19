@@ -40,6 +40,10 @@ var (
 	taskRegistryLock sync.Mutex
 )
 
+// createTask returns a task with the one reference the caller owns; posting
+// it hands that reference to CEF.
+//
+// refcheck:fresh
 func createTask(task CefTask) *C.cef_task_t {
 	theTask := C.task_create()
 

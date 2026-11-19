@@ -607,7 +607,7 @@ func castValue(val any) (Value, error) {
 					releaseBase(unsafe.Pointer(v8Ptr))
 					return nil, subErr
 				} else {
-					// set_value_byindex consumes the sub-value reference
+					// refcheck:owned set_value_byindex consumes the sub-value reference
 					C.js_set_value_by_index(v8Ptr, C.int(idx), subValue.native())
 				}
 			}
@@ -629,6 +629,7 @@ func castValue(val any) (Value, error) {
 				// and nothing closes those once the root is resolved into a
 				// promise, so every child of a map result leaked.
 				cKey := C.CString(key.String())
+				// refcheck:owned the child's reference goes to the object
 				ok := C.setValueByKey(obj.ptr, cKey, subValue.native()) != 0
 				C.free(unsafe.Pointer(cKey))
 				if !ok {

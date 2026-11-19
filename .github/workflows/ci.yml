@@ -99,6 +99,12 @@ jobs:
             exit 1
           fi
 
+      - name: refcheck
+        # Heuristic reference-count lint of the cgo boundary: callback
+        # parameters must be released or handed off, consuming C calls need
+        # a reference of their own. Syntactic, no cgo. See tools/refcheck.
+        run: go run ./tools/refcheck
+
       - name: File selection per GOOS
         # go list only selects and parses files, so this needs no cross
         # toolchain. It catches build-tag mistakes and, on freebsd, the case

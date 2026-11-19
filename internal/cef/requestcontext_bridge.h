@@ -8,7 +8,7 @@
 
 struct _cef_cookie_manager_t* cRequestContextGetCookieManager(struct _cef_request_context_t* context);
 int cRequestContextIsGlobal(struct _cef_request_context_t* context);
-int cRequestContextIsSame(struct _cef_request_context_t* context, struct _cef_request_context_t* other);
+int cRequestContextIsSame(struct _cef_request_context_t* context, struct _cef_request_context_t* other REF_BORROWED);
 cef_string_userfree_t cRequestContextGetCachePath(struct _cef_request_context_t* context);
 
 #endif

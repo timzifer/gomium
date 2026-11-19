@@ -104,6 +104,10 @@ func (r *Request) GetMethod() string {
 	return C.GoString(utf8string.str)
 }
 
+// From wraps a cef_request_t and takes over the reference ptr carries;
+// invalidateAndRelease gives it back.
+//
+// refcheck:adopts ptr
 func From(ptr unsafe.Pointer) *Request {
 	return &Request{ptr: (*C.cef_request_t)(ptr)}
 }
