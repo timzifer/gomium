@@ -14,6 +14,10 @@ fetched — they are listed for the record of what changed when.
 
 ### Added
 
+- `-tags refdebug`: a reference ledger for every struct gomium allocates. A reference
+  operation on a freed struct panics with the stack that freed it, and `CefApp.Close`
+  fails with the allocation stacks of structs still alive after `cef_shutdown`. CI
+  runs the harness scenarios with it on Windows (`cmd/harness/refdebug.sh`).
 - `WithV8Listener`: registers a V8 context listener in both processes. Before, a host
   could not reach the render process at all — `AddV8Listener` on the browser-process
   app never fires, since V8 contexts exist only in the renderer.
@@ -39,8 +43,11 @@ fetched — they are listed for the record of what changed when.
 - `WithPopupView` popups no longer leak clients: a popup CEF aborts after
   `on_before_popup` allowed it (`on_before_popup_aborted`) now closes the client
   prepared for it, as does closing the opener's client while the popup is still being
-  built. Every popup also leaked one reference to the opener's `cef_client_t`, which
-  kept it from ever being freed.
+  built. Every popup - also one routed into the opener, cancelled, or opened
+  natively - leaked one reference to the opener's `cef_client_t`, which kept it from
+  ever being freed.
+- The factory of `WithCustomScheme` outlived `cef_shutdown`: CEF keeps the factories
+  of the global request context, so `Close` now clears them first.
 - A frame whose new V8 context is created before the old one is released keeps the new
   one; before, the late release dropped it and evaluations in that frame failed with
   "no v8 context".

@@ -123,3 +123,45 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu
           CC=aarch64-linux-gnu-gcc GOARCH=arm64 go build ./...
+
+  refdebug:
+    # The one job that runs CEF. A -tags refdebug harness checks the reference
+    # ledger of every struct gomium allocates: a reference operation on a
+    # freed struct panics, and structs still alive after cef_shutdown fail
+    # Close. Scenarios run offscreen; CEF falls back to software rendering on
+    # the GPU-less runner. See cmd/harness/refdebug.sh.
+    name: refdebug (windows)
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Cache CEF distribution
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/gomium-cef
+          key: cef-windows64-${{ hashFiles('cefdl/cef.version') }}
+
+      - name: Fetch CEF runtime
+        run: go run ./tools/cefdl -cache "${{ runner.temp }}/gomium-cef"
+
+      - name: Ledger unit test
+        run: go test -tags refdebug -run TestRefLedger ./internal/cef
+
+      - name: Build refdebug harness
+        run: go build -tags refdebug -o build/harness-refdebug.exe ./cmd/harness
+
+      - name: Run scenarios
+        shell: bash
+        run: cmd/harness/refdebug.sh build/harness-refdebug.exe
+
+      - name: Upload scenario logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: refdebug-logs
+          path: build/refdebug/

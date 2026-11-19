@@ -48,5 +48,22 @@ external message pump for 20 s and writes every paint to `shots/<µs>.jpg` (crea
 | `GOMIUM_RESIZE_STRESS=1` | resizes the offscreen surface continuously, like a dragged parent window |
 | `GOMIUM_DEVTOOLS_TEST=1` or `-devtools` | `WithDevTools` probe: attach, evaluate, load events, cross-site navigation, renderer crash |
 
+## Reference ledger (`refdebug`)
+
+Built with `-tags refdebug`, gomium checks the reference counts of every struct it
+allocates: a reference operation on a freed struct panics with the stack that freed it,
+and `Close` fails with the allocation stack of each struct still alive after
+`cef_shutdown` - the harness then exits with code 3. `refdebug.sh` runs the offscreen
+scenarios against such a build and fails on any finding; CI does the same on Windows.
+
+```sh
+go build -tags refdebug -o build/harness-refdebug.exe ./cmd/harness
+cmd/harness/refdebug.sh build/harness-refdebug.exe            # all scenarios
+cmd/harness/refdebug.sh build/harness-refdebug.exe POPUP SCHEME
+```
+
+The ledger covers gomium's own structs (handlers, clients, callbacks), not the CEF
+objects gomium receives - a missing release of a browser or frame stays invisible.
+
 The harness uses its own profile, `%TEMP%/gomium-test-profile`, so it never collides with
 another CEF application's process singleton.

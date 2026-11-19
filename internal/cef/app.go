@@ -182,6 +182,10 @@ func (c *cefApp) Close() error {
 		}
 	}
 
+	if initialized {
+		c.clearSchemeHandlerFactories()
+	}
+
 	// Now stop the pump worker and shut CEF down. Workers the host still has
 	// queued turn into no-ops from here on.
 	c.shutdownOnce.Do(func() { close(c.shutdownChannel) })
@@ -201,7 +205,9 @@ func (c *cefApp) Close() error {
 	instance = nil
 	appRunning = false
 	mtx.Unlock()
-	return nil
+
+	// refdebug builds: everything gomium allocated must be gone by now
+	return checkRefLedger()
 }
 
 // freeNativeStructs releases the go-owned references on all calloc'd CEF

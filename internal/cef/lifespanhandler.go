@@ -182,6 +182,13 @@ func goOnBeforePopup(self *C.cef_life_span_handler_t,
 	defer releaseBase(unsafe.Pointer(cefBrowser))
 	defer releaseBase(unsafe.Pointer(frame))
 
+	// *popupClient arrives holding a reference to the opener's client
+	// (CToCpp::Unwrap) that CEF never takes back: the callee owns it, whether
+	// it replaces the value or not. CEF only compares the pointer afterwards.
+	if popupClient != nil && *popupClient != nil {
+		releaseBase(unsafe.Pointer(*popupClient))
+	}
+
 	c, _ := lifeSpanHandler(self)
 	if c == nil {
 		return 0
@@ -316,11 +323,6 @@ func openPopupView(opener *client, slot popupSlot, view PopupView, windowInfo *C
 		return false
 	}
 
-	// *popupClient arrives holding a reference to the opener's client that
-	// CEF does not take back when the value is replaced - drop it here
-	if *popupClient != nil {
-		releaseBase(unsafe.Pointer(*popupClient))
-	}
 	// CEF releases the reference it receives here; the client wrapper keeps its own
 	addRefBase(unsafe.Pointer(created.ptr))
 	*popupClient = created.ptr
