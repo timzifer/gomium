@@ -66,17 +66,19 @@ first start and crash debugging, then verification with `cmd/harness`'s scenario
 
 Crash debugging dominates the schedule, not the edits. Budget accordingly.
 
-## 5. Pin `CEF_API_VERSION` — do this next time
+## 5. `CEF_API_VERSION` is pinned
 
 CEF 131+ supports pinning the API version by defining `CEF_API_VERSION` before the
-includes (e.g. `-DCEF_API_VERSION=15101` in the cgo `CFLAGS`) and checking it with
-`cef_api_hash(version, entry)`. gomium is currently on
-`CEF_API_VERSION_EXPERIMENTAL`, which means every CEF release is free to change the
-ABI under it.
+includes and checking it with `cef_api_hash(version, entry)`. gomium pins it to `15600`
+(`-DCEF_API_VERSION=15600` in the cgo `CFLAGS`, `internal/cef/cgoflags.go`); the 151→156
+migration introduced it. Without the pin the headers default to
+`CEF_API_VERSION_EXPERIMENTAL`, where every CEF release is free to change the ABI under
+the binding.
 
-Pinning makes subsequent upgrades source-compatible and turns the next one into a
-version bump rather than a port. Given CEF's move to a two-week Chromium release cycle,
-this is the single highest-leverage change available here.
+On an upgrade, keep the pin unless you need API that only a newer version exposes:
+a newer CEF still serves the pinned version, which keeps the upgrade a version bump
+rather than a port. Raising it is a deliberate step — bump the define, regenerate what
+depends on it, and read the changed structs in the headers.
 
 ## 6. New symbols need a shim entry
 

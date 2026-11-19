@@ -70,8 +70,8 @@ type (
 		CanGoBack() bool
 		CanGoForward() bool
 
-		// SetZoomLevel: 0 = default; jede Stufe entspricht Chromiums
-		// Zoom-Faktor-Schritten (level = log(faktor)/log(1.2)).
+		// SetZoomLevel sets the zoom: 0 is the default, and each step is one
+		// of Chromium's zoom factor steps (level = log(factor)/log(1.2)).
 		SetZoomLevel(level float64)
 		// ZoomLevel reads the current zoom on the UI thread and blocks until
 		// the value is available.

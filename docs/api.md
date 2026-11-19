@@ -83,7 +83,7 @@ running (e.g. the terminal app), `cef_initialize` of the second one fails with
 | `WithIgnoreCertificateErrors(bool)` | ignore certificate errors globally (footgun — prefer the client option `WithCertificateErrorsAcceptedFor`) |
 | `WithMessagePumpWorker(cb)` / `WithMessagePumpWorkerInterval(d)` | external message pump (Fyne main loop integration) |
 | `WithMultiThreadedMessageLoop(bool)` | CEF's own loop thread (Windows) instead of an external pump |
-| `WithInitializationTimeout(d)` | timeout for `New` |
+| `WithInitializationTimeout(d)` | how long `Run` waits for CEF's context to initialize (default 500 ms) |
 | `WithModuleHandle(h)` | Windows: module handle (`GetModuleHandle(nil)`) |
 | `WithCustomScheme(name, options)` | custom scheme (`help://`, `app://`) — see below |
 | `WithV8Listener(l)` | renderer: V8 context created/released — see [V8 lifecycle](#v8-lifecycle) |
