@@ -7,24 +7,33 @@ package cef
 */
 import "C"
 import (
-	"fmt"
-	"github.com/rs/zerolog"
+	"context"
+	"log/slog"
 	"sync"
 	"unsafe"
 )
 
 var (
-	memoryLogger = zerolog.Nop()
+	memoryLogger = nopLogger()
 	memoryBridge = make(map[unsafe.Pointer]int)
 	refCountLock sync.Mutex
 )
 
-// SetMemoryLogger sets the logger of the reference counting. The goMemory*
-// callbacks read it under refCountLock, so it is written under it too.
-func SetMemoryLogger(zLogger zerolog.Logger) {
+// SetMemoryLogger sets the logger of the reference counting, which logs at
+// LevelTrace. nil switches it off. The goMemory* callbacks read it under
+// refCountLock, so it is written under it too.
+func SetMemoryLogger(logger *slog.Logger) {
 	refCountLock.Lock()
 	defer refCountLock.Unlock()
-	memoryLogger = zLogger
+	memoryLogger = orNop(logger)
+}
+
+// traceRef logs one reference operation. It runs on every add_ref/release,
+// so nothing is built unless the logger takes LevelTrace.
+func traceRef(op string, it unsafe.Pointer, count int) {
+	if memoryLogger.Enabled(context.Background(), LevelTrace) {
+		trace(memoryLogger, op, "ptr", hexPtr(uintptr(it)), "count", count)
+	}
 }
 
 // addRefBase / releaseBase are the untyped convenience variants used by the
@@ -53,7 +62,7 @@ func goMemoryRegister(it unsafe.Pointer) {
 	}
 	memoryBridge[it] = 1
 	ledgerRegister(it)
-	memoryLogger.Trace().Str("ptr", fmt.Sprintf("0x%x", it)).Int("count", 1).Msg("+++")
+	traceRef("+++", it, 1)
 }
 
 //export goMemoryAddRef
@@ -64,13 +73,13 @@ func goMemoryAddRef(it unsafe.Pointer) C.int {
 	if m == 0 {
 		// a struct that was freed (or never ours): use after free. Do not
 		// bring it back - a later release would free it a second time.
-		memoryLogger.Warn().Str("ptr", fmt.Sprintf("0x%x", it)).Msg("add_ref on unknown pointer")
+		memoryLogger.Warn("add_ref on unknown pointer", "ptr", hexPtr(uintptr(it)))
 		ledgerFault("add_ref on an unknown or freed pointer", it)
 		return 0
 	}
 	m++
 
-	memoryLogger.Trace().Str("ptr", fmt.Sprintf("0x%x", it)).Int("count", m).Msg("+++")
+	traceRef("+++", it, m)
 
 	memoryBridge[it] = m
 	return C.int(m)
@@ -105,18 +114,18 @@ func releaseCounted(it unsafe.Pointer) bool {
 
 	m, ok := memoryBridge[it]
 	if !ok {
-		memoryLogger.Warn().Str("ptr", fmt.Sprintf("0x%x", it)).Msg("release on unknown pointer")
+		memoryLogger.Warn("release on unknown pointer", "ptr", hexPtr(uintptr(it)))
 		ledgerFault("release on an unknown or freed pointer", it)
 		return false
 	}
 	m--
 	if m <= 0 {
-		memoryLogger.Trace().Str("ptr", fmt.Sprintf("0x%x", it)).Msg("###")
+		traceRef("###", it, 0)
 		delete(memoryBridge, it)
 		ledgerForget(it)
 		return true
 	}
-	memoryLogger.Trace().Str("ptr", fmt.Sprintf("0x%x", it)).Int("count", m).Msg("---")
+	traceRef("---", it, m)
 	memoryBridge[it] = m
 	return false
 }
@@ -127,7 +136,7 @@ func goMemoryHasOneRef(it unsafe.Pointer) C.int {
 	defer refCountLock.Unlock()
 
 	cnt := memoryBridge[it]
-	memoryLogger.Trace().Str("ptr", fmt.Sprintf("0x%x", it)).Int("count", cnt).Msg("???")
+	traceRef("???", it, cnt)
 	if cnt == 1 {
 		return 1
 	}

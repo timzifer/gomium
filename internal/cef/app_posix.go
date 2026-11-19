@@ -23,7 +23,7 @@ func (c *cefApp) initializeOperatingSystemSpecificMainArgs() {
 	}
 	c.mainArgs.argc = C.int(argc)
 	c.mainArgs.argv = argv
-	c.options.logger.Trace().Msgf("operating-system specific main args initialized, argc=%d", argc)
+	trace(c.options.logger, "operating-system specific main args initialized", "argc", argc)
 }
 
 func (c *cefApp) freeOperatingSystemSpecificMainArgs() {

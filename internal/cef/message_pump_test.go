@@ -5,8 +5,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/rs/zerolog"
 )
 
 // pumpRecorder stands in for a host: it records when the scheduler handed it
@@ -40,7 +38,7 @@ func startScheduler(t *testing.T, interval time.Duration) (*cefApp, *pumpRecorde
 		shutdownChannel: make(chan struct{}),
 		pumpWakeup:      make(chan struct{}, 1),
 		options: appOptions{
-			logger:             zerolog.Nop(),
+			logger:             nopLogger(),
 			pumpWorker:         rec.worker,
 			pumpWorkerInterval: interval,
 		},

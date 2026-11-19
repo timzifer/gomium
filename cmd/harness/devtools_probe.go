@@ -10,8 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/rs/zerolog"
 	gomium "github.com/timzifer/gomium"
+	"log/slog"
 )
 
 // devToolsFlag enables the DevTools probe: `-devtools` on the command line.
@@ -33,7 +33,7 @@ func devToolsProbeEnabled() bool {
 // does. The first attach evaluates the page and, on its first load event,
 // navigates cross-site once. Every attach runs the receiver again, so a
 // reattach shows up as a second "attached #n" line with the new URL.
-func devToolsProbeOptions(logger zerolog.Logger) []gomium.ClientOption {
+func devToolsProbeOptions(logger *slog.Logger) []gomium.ClientOption {
 	var attaches atomic.Int32
 	var loadCount atomic.Int32
 	var navigated sync.Once
@@ -42,26 +42,26 @@ func devToolsProbeOptions(logger zerolog.Logger) []gomium.ClientOption {
 	return []gomium.ClientOption{
 		gomium.WithDevTools(func(b gomium.Browser, dt gomium.DevTools) {
 			n := attaches.Add(1)
-			logger.Info().Int32("attach", n).Msg("devtools: attached")
+			logger.Info("devtools: attached", "attach", n)
 
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
 			if _, err := dt.Call(ctx, "Page.enable", nil); err != nil {
-				logger.Error().Err(err).Msg("devtools: Page.enable failed")
+				logger.Error("devtools: Page.enable failed", "err", err)
 			}
 			raw, err := dt.Call(ctx, "Runtime.evaluate", map[string]any{
 				"expression":    "location.href + ' | ' + document.title",
 				"returnByValue": true,
 			})
 			if err != nil {
-				logger.Error().Err(err).Int32("attach", n).Msg("devtools: Runtime.evaluate failed")
+				logger.Error("devtools: Runtime.evaluate failed", "err", err, "attach", n)
 			} else {
-				logger.Info().Int32("attach", n).RawJSON("result", raw).Msg("devtools: evaluate")
+				logger.Info("devtools: evaluate", "attach", n, "result", string(raw))
 			}
 
 			dt.On("Page.loadEventFired", func(p json.RawMessage) {
-				logger.Info().Int32("attach", n).RawJSON("params", p).Msg("devtools: loadEventFired")
+				logger.Info("devtools: loadEventFired", "attach", n, "params", string(p))
 				loads := loadCount.Add(1)
 				if loads == 1 {
 					navigated.Do(func() {
@@ -69,10 +69,10 @@ func devToolsProbeOptions(logger zerolog.Logger) []gomium.ClientOption {
 							nctx, ncancel := context.WithTimeout(context.Background(), 5*time.Second)
 							defer ncancel()
 							if _, err := dt.Call(nctx, "Page.navigate", map[string]any{"url": devToolsReattachURL}); err != nil {
-								logger.Error().Err(err).Msg("devtools: Page.navigate failed")
+								logger.Error("devtools: Page.navigate failed", "err", err)
 								return
 							}
-							logger.Info().Str("url", devToolsReattachURL).Msg("devtools: navigate issued")
+							logger.Info("devtools: navigate issued", "url", devToolsReattachURL)
 						}()
 					})
 					return
@@ -88,7 +88,7 @@ func devToolsProbeOptions(logger zerolog.Logger) []gomium.ClientOption {
 						// (deadline exceeded, no reattach), so try a renderer crash
 						// through navigation instead.
 						_, err := dt.Call(cctx, "Page.navigate", map[string]any{"url": "chrome://crash"})
-						logger.Info().Int32("attach", n).Err(err).Bool("detached", errors.Is(err, gomium.ErrDevToolsDetached)).Msg("devtools: chrome://crash navigation returned")
+						logger.Info("devtools: chrome://crash navigation returned", "attach", n, "err", err, "detached", errors.Is(err, gomium.ErrDevToolsDetached))
 					}()
 				})
 			})

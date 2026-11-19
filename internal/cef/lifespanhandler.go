@@ -294,7 +294,7 @@ func goOnBeforePopupAborted(self *C.cef_life_span_handler_t, cefBrowser *C.cef_b
 	popup.popupOpener = nil
 	popup.Unlock()
 
-	c.logger.Debug().Int("popup", slot.popup).Msg("popup aborted, closing its client")
+	c.logger.Debug("popup aborted, closing its client", "popup", slot.popup)
 	go func() { _ = popup.Close() }()
 }
 
@@ -370,7 +370,7 @@ func goOnBeforeClose(self *C.cef_life_span_handler_t, cb *C.cef_browser_t) {
 			b.invalidate()
 		}
 		if closePopup {
-			c.logger.Debug().Msg("closing popup client")
+			c.logger.Debug("closing popup client")
 			go func() { _ = c.Close() }()
 		}
 	}

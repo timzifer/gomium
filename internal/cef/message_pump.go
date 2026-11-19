@@ -69,10 +69,10 @@ func (c *cefApp) runPumpScheduler(ctx context.Context) {
 	for {
 		select {
 		case <-c.shutdownChannel:
-			c.options.logger.Debug().Msg("stopping worker loop (shutdown)")
+			c.options.logger.Debug("stopping worker loop (shutdown)")
 			return
 		case <-ctx.Done():
-			c.options.logger.Debug().Msg("ctx done stopping worker loop")
+			c.options.logger.Debug("ctx done stopping worker loop")
 			return
 		case <-c.pumpWakeup:
 		case <-timer.C:

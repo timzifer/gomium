@@ -12,6 +12,15 @@ fetched — they are listed for the record of what changed when.
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** logging uses `log/slog` instead of zerolog (#22). `WithLogger`,
+  `SetDebugLogger` and `SetMemoryLogger` take a `*slog.Logger`; `nil` switches logging
+  off. The trace output of the reference counting and the noisiest app steps logs at the
+  new `LevelTrace` (below `slog.LevelDebug`). zerolog is no longer a dependency. The
+  reference-count trace builds its attributes only when the logger takes `LevelTrace` —
+  before, every `add_ref`/`release` formatted the pointer even with logging off.
+
 ### Removed
 
 - **Breaking:** internal plumbing that had leaked into the root API (#19):

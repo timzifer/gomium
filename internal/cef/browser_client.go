@@ -24,8 +24,9 @@ package cef
 import "C"
 import (
 	"errors"
-	"github.com/rs/zerolog"
+	"fmt"
 	"io"
+	"log/slog"
 	"sync"
 	"time"
 	"unsafe"
@@ -36,7 +37,7 @@ type (
 		sync.Mutex
 
 		ptr    *C.cef_client_t
-		logger zerolog.Logger
+		logger *slog.Logger
 
 		renderHandlerPtr *C.cef_render_handler_t
 		renderHandler    RenderHandler
@@ -147,7 +148,7 @@ func goOnProcessMessageReceived(ptr *C.cef_client_t, cefBrowser *C.cef_browser_t
 
 	msg, err := getProcessMessageInstance(processMessage{message})
 	if err != nil {
-		c.logger.Warn().Err(err).Msg("could not decode process message")
+		c.logger.Warn("could not decode process message", "err", err)
 		return 0
 	}
 
@@ -159,7 +160,7 @@ func goOnProcessMessageReceived(ptr *C.cef_client_t, cefBrowser *C.cef_browser_t
 		handleBindingCallRequest(c, payload, cefFrame{cFrame})
 		return 1
 	default:
-		c.logger.Debug().Any("source-process", sourceProcess).Msgf("unhandled process message type %T", payload)
+		c.logger.Debug(fmt.Sprintf("unhandled process message type %T", payload), "source-process", sourceProcess)
 		return 0
 	}
 }
@@ -199,13 +200,13 @@ func (c *client) NewBrowser(opts ...BrowserOption) (Browser, error) {
 	newBrowser.windowInfo.size = C.sizeof_cef_window_info_t
 
 	if nil != c.renderHandler {
-		c.logger.Debug().Msg("activating windowless-rendering...")
+		c.logger.Debug("activating windowless-rendering...")
 		newBrowser.windowInfo.windowless_rendering_enabled = 1
 		// windowless rendering requires the Alloy runtime style - the Chrome
 		// style (the 151 default) does not support OSR
 		newBrowser.windowInfo.runtime_style = C.CEF_RUNTIME_STYLE_ALLOY
 	} else if newBrowser.settings.windowed {
-		c.logger.Debug().Msg("creating a windowed browser...")
+		c.logger.Debug("creating a windowed browser...")
 		if err := newBrowser.applyWindowInfo(); err != nil {
 			c.Unlock()
 			return nil, err
@@ -232,7 +233,7 @@ func (c *client) NewBrowser(opts ...BrowserOption) (Browser, error) {
 	c.Unlock()
 
 	when := time.Now()
-	c.logger.Debug().Msg("creating cef-browser")
+	c.logger.Debug("creating cef-browser")
 
 	initialUrl := cefString(newBrowser.settings.initialUrl)
 	defer cefStringFree(initialUrl)
@@ -256,7 +257,7 @@ func (c *client) NewBrowser(opts ...BrowserOption) (Browser, error) {
 		c.Unlock()
 		return nil, errors.New("browser creation failed")
 	}
-	c.logger.Debug().Msg("browser creation successful, waiting for on_create-event")
+	c.logger.Debug("browser creation successful, waiting for on_create-event")
 
 	// on_after_created runs on the UI thread; with an external pump and the
 	// caller on that thread, the wait has to pump (see uiWaitPump)
@@ -291,7 +292,7 @@ wait:
 				break wait
 			}
 			err := errors.New("timed out while waiting for cef-browser")
-			c.logger.Error().Dur("duration", time.Since(when)).Dur("timeout", c.createTimeout).Err(err).Send()
+			c.logger.Error(err.Error(), "duration", time.Since(when), "timeout", c.createTimeout)
 			return nil, err
 		}
 	}
@@ -311,7 +312,7 @@ wait:
 	c.browsers[newBrowser.identifier] = newBrowser
 	c.Unlock()
 
-	c.logger.Debug().Dur("duration", time.Since(when)).Msg("browser received")
+	c.logger.Debug("browser received", "duration", time.Since(when))
 	return newBrowser, nil
 }
 
@@ -358,11 +359,11 @@ func (c *client) closeInternal(pump func()) error {
 	}
 	c.Unlock()
 
-	c.logger.Trace().Msg("closing client")
+	trace(c.logger, "closing client")
 
 	for _, b := range browsers {
 		if closeErr := b.Close(); closeErr != nil {
-			c.logger.Warn().Int("identifier", b.identifier).Err(closeErr).Msg("error closing browser")
+			c.logger.Warn("error closing browser", "identifier", b.identifier, "err", closeErr)
 		}
 	}
 
@@ -377,7 +378,7 @@ func (c *client) closeInternal(pump func()) error {
 			break
 		}
 		if time.Now().After(deadline) {
-			c.logger.Warn().Int("remaining", remaining).Msg("timed out waiting for browsers to close")
+			c.logger.Warn("timed out waiting for browsers to close", "remaining", remaining)
 			break
 		}
 		if pump != nil {
@@ -487,11 +488,11 @@ func (c *client) closeInternal(pump func()) error {
 		popup.popupOpener = nil
 		popup.Unlock()
 		if closeErr := popup.closeInternal(pump); closeErr != nil {
-			c.logger.Warn().Err(closeErr).Msg("error closing pending popup client")
+			c.logger.Warn("error closing pending popup client", "err", closeErr)
 		}
 	}
 
-	c.logger.Trace().Msg("client closed")
+	trace(c.logger, "client closed")
 	return nil
 }
 
@@ -501,7 +502,7 @@ func (c *cefApp) NewClient(options ...ClientOption) Client {
 
 	newClient := &client{
 		ptr:    C.cClientCreate(),
-		logger: c.options.logger.With().Str("component", "client").Logger(),
+		logger: c.options.logger.With("component", "client"),
 
 		renderHandlerPtr:          C.cRenderHandlerCreate(),
 		requestHandlerPtr:         C.cRequestHandlerCreate(),

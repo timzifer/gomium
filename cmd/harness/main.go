@@ -6,10 +6,10 @@ import (
 	"flag"
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/rs/zerolog"
 	"github.com/timzifer/gomium"
 	"image"
 	"image/jpeg"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -78,10 +78,10 @@ addEventListener("drop", ev => {
 
 // testDialogHandler answers confirm with OK and prompt with "gomium" so the
 // page-side results prove the round trip.
-type testDialogHandler struct{ logger zerolog.Logger }
+type testDialogHandler struct{ logger *slog.Logger }
 
 func (h testDialogHandler) OnJsDialog(_ gomium.Browser, originUrl string, dialogType gomium.JsDialogType, message, defaultPrompt string, callback gomium.JsDialogCallback) gomium.JsDialogAction {
-	h.logger.Info().Str("origin", originUrl).Int("type", int(dialogType)).Str("message", message).Str("default", defaultPrompt).Msg("dialog-test: js dialog")
+	h.logger.Info("dialog-test: js dialog", "origin", originUrl, "type", int(dialogType), "message", message, "default", defaultPrompt)
 	go func() {
 		switch dialogType {
 		case gomium.JsDialogTypePrompt:
@@ -94,12 +94,12 @@ func (h testDialogHandler) OnJsDialog(_ gomium.Browser, originUrl string, dialog
 }
 
 func (h testDialogHandler) OnBeforeUnloadDialog(_ gomium.Browser, message string, isReload bool, _ gomium.JsDialogCallback) gomium.JsDialogAction {
-	h.logger.Info().Str("message", message).Bool("reload", isReload).Msg("dialog-test: unload dialog suppressed")
+	h.logger.Info("dialog-test: unload dialog suppressed", "message", message, "reload", isReload)
 	return gomium.JsDialogSuppressed
 }
 
 // testMenuHandler logs the right-click context and swallows the menu.
-type testMenuHandler struct{ logger zerolog.Logger }
+type testMenuHandler struct{ logger *slog.Logger }
 
 func (h testMenuHandler) RunContextMenu(_ gomium.Browser, params gomium.ContextMenuParams, model []gomium.ContextMenuItem, callback gomium.ContextMenuCallback) bool {
 	labels := make([]string, 0, len(model))
@@ -108,9 +108,7 @@ func (h testMenuHandler) RunContextMenu(_ gomium.Browser, params gomium.ContextM
 			labels = append(labels, item.Label)
 		}
 	}
-	h.logger.Info().Int("x", params.X).Int("y", params.Y).Str("page", params.PageUrl).
-		Bool("editable", params.IsEditable).Int("items", len(model)).Strs("labels", labels).
-		Msg("menu-test: context menu intercepted")
+	h.logger.Info("menu-test: context menu intercepted", "x", params.X, "y", params.Y, "page", params.PageUrl, "editable", params.IsEditable, "items", len(model), "labels", labels)
 	callback.Cancel()
 	return true
 }
@@ -139,8 +137,7 @@ func main() {
 
 	runtime.LockOSThread()
 
-	writer := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}
-	logger := zerolog.New(writer).With().Timestamp().Stack().Logger()
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	// libcef is bound at runtime - this must happen before Run AND before
 	// ExecuteSubprocess, since helpers are new instances of this
@@ -159,13 +156,13 @@ func main() {
 		}
 	}
 	if err := gomium.LoadLibcef(libcefPath); err != nil {
-		logger.Fatal().Err(err).Send()
+		fatal(logger, "", "err", err)
 	}
 
 	// macOS only: CEF needs an NSApplication that speaks CefAppProtocol, and
 	// it has to exist before cef_initialize and before cef_execute_process.
 	if err := installMacApplication(); err != nil {
-		logger.Fatal().Err(err).Send()
+		fatal(logger, "", "err", err)
 	}
 
 	// CEF helper processes are new instances of this executable - hand them
@@ -173,7 +170,7 @@ func main() {
 	// applications must structure their main().
 	if gomium.IsSubprocess() {
 		if err := gomium.ExecuteSubprocess(append(append(options(logger), schemeTestOptions()...), bindingTestOptions()...)...); err != nil {
-			logger.Fatal().Err(err).Send()
+			fatal(logger, "", "err", err)
 		}
 		return
 	}
@@ -181,19 +178,19 @@ func main() {
 	// command-line switches; helper processes returned above and never get here
 	flag.Parse()
 
-	//	gomium.SetDebugLogger(logger.With().Str("type", "Debug").Logger())
-	//	gomium.SetMemoryLogger(logger.With().Str("type", "Memory").Logger())
+	//	gomium.SetDebugLogger(logger.With("type", "Debug"))
+	//	gomium.SetMemoryLogger(logger.With("type", "Memory"))
 
 	if app, err := gomium.New(append(append(options(logger), schemeTestOptions()...), bindingTestOptions()...)...); err != nil {
-		logger.Fatal().Err(err).Send()
+		fatal(logger, "", "err", err)
 	} else {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		if runErr := app.Run(ctx); runErr != nil {
-			logger.Error().Err(runErr).Send()
+			logger.Error(runErr.Error())
 			_ = app.Close()
 		} else {
-			logger.Info().Msg("going...")
+			logger.Info("going...")
 
 			// macOS only: cef_initialize is done, so this is where cefclient
 			// would enter [NSApp run]. gomium pumps the loop itself, which
@@ -238,30 +235,30 @@ func main() {
 						// false lets CEF proceed with destroying the browser
 						return false
 					}), gomium.WithDisplayHandlerFuncs(func(b gomium.Browser, s string) {
-					logger.Info().Str("title", s).Msg("title changed")
+					logger.Info("title changed", "title", s)
 				}, func(b gomium.Browser, theUrl *url.URL) {
-					logger.Info().Str("url", theUrl.String()).Msg("url changed")
+					logger.Info("url changed", "url", theUrl.String())
 				}, func(b gomium.Browser, file string, line int, message string) {
-					logger.Info().Str("file", file).Int("line", line).Msg(message)
+					logger.Info(message, "file", file, "line", line)
 				}, func(b gomium.Browser, strings []*url.URL) {
-					logger.Info().Interface("urls", strings).Msg("favicon changed")
+					logger.Info("favicon changed", "urls", strings)
 				}),
 				gomium.WithLoadHandlerFuncs(
 					func(b gomium.Browser, isLoading, canGoBack, canGoForward bool) {
-						logger.Info().Bool("loading", isLoading).Bool("back", canGoBack).Bool("forward", canGoForward).Msg("loading state changed")
+						logger.Info("loading state changed", "loading", isLoading, "back", canGoBack, "forward", canGoForward)
 					},
 					func(b gomium.Browser, isMainFrame bool) {
-						logger.Info().Bool("main", isMainFrame).Msg("load start")
+						logger.Info("load start", "main", isMainFrame)
 					},
 					func(b gomium.Browser, isMainFrame bool, httpStatusCode int) {
-						logger.Info().Bool("main", isMainFrame).Int("status", httpStatusCode).Msg("load end")
+						logger.Info("load end", "main", isMainFrame, "status", httpStatusCode)
 					},
 					func(b gomium.Browser, isMainFrame bool, errorCode int, errorText, failedUrl string) {
-						logger.Warn().Bool("main", isMainFrame).Int("code", errorCode).Str("text", errorText).Str("url", failedUrl).Msg("load error")
+						logger.Warn("load error", "main", isMainFrame, "code", errorCode, "text", errorText, "url", failedUrl)
 					}),
 				gomium.WithPopupsInOpener(),
 				gomium.WithDownloadDirectory(os.TempDir(), func(b gomium.Browser, item gomium.DownloadItem) {
-					logger.Info().Uint32("id", item.Id).Str("path", item.FullPath).Int64("received", item.ReceivedBytes).Bool("complete", item.Complete).Msg("download updated")
+					logger.Info("download updated", "id", item.Id, "path", item.FullPath, "received", item.ReceivedBytes, "complete", item.Complete)
 				}),
 			}
 
@@ -272,10 +269,10 @@ func main() {
 			windowTest := os.Getenv("GOMIUM_WINDOW_TEST") != ""
 			if windowTest {
 				clientOptions = append(clientOptions, gomium.WithFileDropHandler(func(bi gomium.Browser, files []string) {
-					logger.Info().Strs("files", files).Msg("window-test: files dragged in")
+					logger.Info("window-test: files dragged in", "files", files)
 					encoded, encodeErr := json.Marshal(files)
 					if encodeErr != nil {
-						logger.Error().Err(encodeErr).Send()
+						logger.Error(encodeErr.Error())
 						return
 					}
 					bi.ExecuteJavascript("window.__droppedFiles = "+string(encoded), "", 0)
@@ -332,7 +329,7 @@ func main() {
 						// GOMIUM_POPUP_ABORT=1: close the opener while CEF builds the
 						// popup, so CEF aborts it - the prepared client must go away
 						if os.Getenv("GOMIUM_POPUP_ABORT") != "" && opener != nil {
-							logger.Info().Msg("binding-popup-test: closing opener during popup creation")
+							logger.Info("binding-popup-test: closing opener during popup creation")
 							go func() { _ = opener.Close() }()
 						}
 						popupImage := gomium.NewImageRenderHandler(image.NewRGBA(image.Rect(0, 0, 1024, 786)), func(result image.Image) {
@@ -355,11 +352,11 @@ func main() {
 						return gomium.PopupView{
 							Options: append(options,
 								gomium.WithDisplayHandlerFuncs(nil, nil, func(_ gomium.Browser, _ string, _ int, message string) {
-									logger.Info().Str("console", message).Msg("binding-popup-test: popup console")
+									logger.Info("binding-popup-test: popup console", "console", message)
 								}, nil),
 							),
 							Attach: func(b gomium.Browser) {
-								logger.Info().Msg("binding-popup-test: popup browser attached")
+								logger.Info("binding-popup-test: popup browser attached")
 								popupAttached <- b
 							},
 						}, true
@@ -487,7 +484,7 @@ func main() {
 
 				br, browserCreateErr := browserClient.NewBrowser(browserOptions...)
 				if browserCreateErr != nil {
-					logger.Error().Err(browserCreateErr).Send()
+					logger.Error(browserCreateErr.Error())
 					closeChan <- true
 					cancel()
 				} else {
@@ -495,12 +492,12 @@ func main() {
 					if os.Getenv("GOMIUM_BINDING_POPUP_TEST") != "" {
 						go func() {
 							time.Sleep(5 * time.Second)
-							logger.Info().Msg("binding-popup-test: trusted click on _blank link")
+							logger.Info("binding-popup-test: trusted click on _blank link")
 							// the popup is closed again after a while: its client must go with it
 							go func() {
 								popup := <-popupAttached
 								time.Sleep(5 * time.Second)
-								logger.Info().Msg("binding-popup-test: closing popup")
+								logger.Info("binding-popup-test: closing popup")
 								_ = popup.Close()
 							}()
 							br.MouseMoved(200, 200, false)
@@ -515,7 +512,7 @@ func main() {
 					if os.Getenv("GOMIUM_POPUP_TEST") != "" {
 						go func() {
 							time.Sleep(5 * time.Second)
-							logger.Info().Msg("popup-test: trusted click on _blank link")
+							logger.Info("popup-test: trusted click on _blank link")
 							br.MouseMoved(200, 200, false)
 							time.Sleep(100 * time.Millisecond)
 							br.MouseClicked(200, 200, gomium.MouseButtonLeft, gomium.MouseButtonDown, 1)
@@ -528,7 +525,7 @@ func main() {
 					if os.Getenv("GOMIUM_DOWNLOAD_TEST") != "" {
 						go func() {
 							time.Sleep(5 * time.Second)
-							logger.Info().Msg("download-test: trusted click on attachment link")
+							logger.Info("download-test: trusted click on attachment link")
 							br.MouseMoved(200, 200, false)
 							time.Sleep(100 * time.Millisecond)
 							br.MouseClicked(200, 200, gomium.MouseButtonLeft, gomium.MouseButtonDown, 1)
@@ -543,7 +540,7 @@ func main() {
 						go func() {
 							for i := 1; i <= 3; i++ {
 								time.Sleep(5 * time.Second)
-								logger.Info().Int("click", i).Msg("softnav-test: trusted click")
+								logger.Info("softnav-test: trusted click", "click", i)
 								br.MouseMoved(200, 200, false)
 								time.Sleep(100 * time.Millisecond)
 								br.MouseClicked(200, 200, gomium.MouseButtonLeft, gomium.MouseButtonDown, 1)
@@ -568,29 +565,29 @@ func main() {
 								Secure:  true,
 								Expires: &expires,
 							}); err != nil {
-								logger.Error().Err(err).Msg("cookie-test: set failed")
+								logger.Error("cookie-test: set failed", "err", err)
 								return
 							}
-							logger.Info().Msg("cookie-test: set ok")
+							logger.Info("cookie-test: set ok")
 
 							if all, err := cookies.CookiesForUrl("https://example.org/", true); err != nil {
-								logger.Error().Err(err).Msg("cookie-test: read failed")
+								logger.Error("cookie-test: read failed", "err", err)
 							} else {
 								for _, c := range all {
-									logger.Info().Str("name", c.Name).Str("value", c.Value).Str("domain", c.Domain).Time("created", c.Creation).Msg("cookie-test: got cookie")
+									logger.Info("cookie-test: got cookie", "name", c.Name, "value", c.Value, "domain", c.Domain, "created", c.Creation)
 								}
 							}
 
 							if count, err := cookies.DeleteCookies("https://example.org/", "gomium_test"); err != nil {
-								logger.Error().Err(err).Msg("cookie-test: delete failed")
+								logger.Error("cookie-test: delete failed", "err", err)
 							} else {
-								logger.Info().Int("deleted", count).Msg("cookie-test: delete ok")
+								logger.Info("cookie-test: delete ok", "deleted", count)
 							}
 
 							if all, err := cookies.Cookies(); err != nil {
-								logger.Error().Err(err).Msg("cookie-test: full read failed")
+								logger.Error("cookie-test: full read failed", "err", err)
 							} else {
-								logger.Info().Int("total", len(all)).Msg("cookie-test: cookies remaining in store")
+								logger.Info("cookie-test: cookies remaining in store", "total", len(all))
 							}
 						}()
 					}
@@ -603,7 +600,7 @@ func main() {
 
 							ctxA, err := gomium.NewRequestContext()
 							if err != nil {
-								logger.Error().Err(err).Msg("context-test: create A failed")
+								logger.Error("context-test: create A failed", "err", err)
 								return
 							}
 							// every RequestContext holds a reference until Release;
@@ -612,31 +609,31 @@ func main() {
 							defer ctxA.Release()
 							ctxB, err := gomium.NewRequestContext()
 							if err != nil {
-								logger.Error().Err(err).Msg("context-test: create B failed")
+								logger.Error("context-test: create B failed", "err", err)
 								return
 							}
 							defer ctxB.Release()
 							global, err := gomium.GlobalRequestContext()
 							if err != nil {
-								logger.Error().Err(err).Msg("context-test: global failed")
+								logger.Error("context-test: global failed", "err", err)
 								return
 							}
 							defer global.Release()
-							logger.Info().Bool("a-global", ctxA.IsGlobal()).Bool("global-global", global.IsGlobal()).Msg("context-test: contexts created")
+							logger.Info("context-test: contexts created", "a-global", ctxA.IsGlobal(), "global-global", global.IsGlobal())
 
 							expires := time.Now().Add(time.Hour)
 							if err := ctxA.CookieManager().SetCookie("https://ctx.example/", gomium.Cookie{
 								Name: "tenant", Value: "context-a", Path: "/", Secure: true, Expires: &expires,
 							}); err != nil {
-								logger.Error().Err(err).Msg("context-test: set in A failed")
+								logger.Error("context-test: set in A failed", "err", err)
 								return
 							}
 
 							countIn := func(label string, rc gomium.RequestContext) {
 								if all, err := rc.CookieManager().Cookies(); err != nil {
-									logger.Error().Err(err).Str("ctx", label).Msg("context-test: read failed")
+									logger.Error("context-test: read failed", "err", err, "ctx", label)
 								} else {
-									logger.Info().Str("ctx", label).Int("cookies", len(all)).Msg("context-test: store size")
+									logger.Info("context-test: store size", "ctx", label, "cookies", len(all))
 								}
 							}
 							countIn("A", ctxA)
@@ -650,10 +647,10 @@ func main() {
 								gomium.WithRequestContext(ctxA),
 							)
 							if err != nil {
-								logger.Error().Err(err).Msg("context-test: browser in context failed")
+								logger.Error("context-test: browser in context failed", "err", err)
 								return
 							}
-							logger.Info().Int("id", br2.Identifier()).Msg("context-test: browser in context A created")
+							logger.Info("context-test: browser in context A created", "id", br2.Identifier())
 
 							// site cookies land in A, the global store stays clean
 							time.Sleep(6 * time.Second)
@@ -676,14 +673,14 @@ func main() {
 							time.Sleep(2 * time.Second)
 							_ = br.Cef().MainFrame().ExecuteJavaScriptWithResult(`window.__d`, nil, 0, func(result *gomium.Exported, err *gomium.ExceptionError) {
 								if err != nil {
-									logger.Error().Err(err).Msg("dialog-test: result read failed")
+									logger.Error("dialog-test: result read failed", "err", err)
 								} else {
-									logger.Info().Any("result", result.Native()).Msg("dialog-test: page-side answers")
+									logger.Info("dialog-test: page-side answers", "result", result.Native())
 								}
 							})
 
 							time.Sleep(1 * time.Second)
-							logger.Info().Msg("menu-test: right click")
+							logger.Info("menu-test: right click")
 							br.MouseMoved(300, 300, false)
 							time.Sleep(100 * time.Millisecond)
 							br.MouseClicked(300, 300, gomium.MouseButtonRight, gomium.MouseButtonDown, 1)
@@ -696,13 +693,13 @@ func main() {
 					if os.Getenv("GOMIUM_NAV_TEST") != "" {
 						go func() {
 							time.Sleep(6 * time.Second)
-							logger.Info().Msg("nav-test: location.href")
+							logger.Info("nav-test: location.href")
 							br.ExecuteJavascript(`location.href='https://example.com/';`, "", 0)
 							time.Sleep(6 * time.Second)
-							logger.Info().Msg("nav-test: click first link")
+							logger.Info("nav-test: click first link")
 							br.ExecuteJavascript(`var a=document.querySelector('a[href]'); if(a){a.click();}`, "", 0)
 							time.Sleep(6 * time.Second)
-							logger.Info().Msg("nav-test: window.open")
+							logger.Info("nav-test: window.open")
 							br.ExecuteJavascript(`window.open('https://example.org/');`, "", 0)
 						}()
 					}
@@ -719,7 +716,7 @@ func main() {
 									rh.Resize(s[0], s[1])
 								}
 								if err := br.Redraw(); err != nil {
-									logger.Warn().Err(err).Msg("redraw failed, stopping resize stress")
+									logger.Warn("redraw failed, stopping resize stress", "err", err)
 									return
 								}
 								time.Sleep(300 * time.Millisecond)
@@ -745,7 +742,7 @@ func main() {
 			// down - it must run on this (the cef_initialize) thread. In a
 			// -tags refdebug build it also reports structs that outlived CEF.
 			if closeErr := app.Close(); closeErr != nil {
-				logger.Error().Err(closeErr).Msg("close failed")
+				logger.Error("close failed", "err", closeErr)
 				os.Exit(3)
 			}
 		}
@@ -790,3 +787,9 @@ if (!isFrame) {
   document.body.appendChild(frame);
 }
 </script></body></html>`
+
+// fatal logs at error level and exits, like zerolog's Fatal did.
+func fatal(logger *slog.Logger, msg string, args ...any) {
+	logger.Error(msg, args...)
+	os.Exit(1)
+}

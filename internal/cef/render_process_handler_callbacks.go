@@ -7,8 +7,9 @@ package cef
 */
 import "C"
 import (
+	"fmt"
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
+	"log/slog"
 	"sync"
 	"unsafe"
 )
@@ -114,7 +115,7 @@ func goOnRenderProcessMessageReceived(ptr *C.cef_render_process_handler_t, cefB 
 
 	msg, err := getProcessMessageInstance(processMessage{message})
 	if err != nil {
-		logger.Warn().Err(err).Msg("could not decode render-process message")
+		logger.Warn("could not decode render-process message", "err", err)
 		return 0
 	}
 
@@ -132,7 +133,7 @@ func goOnRenderProcessMessageReceived(ptr *C.cef_render_process_handler_t, cefB 
 		v8contextLock.Unlock()
 
 		if !exists || ctx == nil {
-			logger.Warn().Str("frame", payload.Frame).Strs("known-frames", knownFrames).Msg("no v8 context for frame, resolving evaluation with error")
+			logger.Warn("no v8 context for frame, resolving evaluation with error", "frame", payload.Frame, "known-frames", knownFrames)
 			dispatchEvaluationError(logger, cefB, payload.Id, "no v8 context for frame")
 			return 1
 		}
@@ -141,32 +142,32 @@ func goOnRenderProcessMessageReceived(ptr *C.cef_render_process_handler_t, cefB 
 
 		theBrowser := ctx.Browser()
 		if theBrowser == nil {
-			logger.Warn().Msg("v8 context has no browser, cannot dispatch evaluation result")
+			logger.Warn("v8 context has no browser, cannot dispatch evaluation result")
 			return 1
 		}
 
 		response := javaScriptEvaluationResponse{Id: payload.Id, Result: result, Exception: exception}
 		if success, dispatchErr := response.DispatchWith(theBrowser, PidBrowser); dispatchErr != nil {
-			logger.Warn().Err(dispatchErr).Msg("could not dispatch evaluation response")
+			logger.Warn("could not dispatch evaluation response", "err", dispatchErr)
 		} else if !success {
-			logger.Warn().Msg("evaluation response was not dispatched")
+			logger.Warn("evaluation response was not dispatched")
 		}
 		theBrowser.Release()
 		return 1
 	default:
-		logger.Debug().Msgf("unhandled render-process message type %T", payload)
+		logger.Debug(fmt.Sprintf("unhandled render-process message type %T", payload))
 		return 0
 	}
 }
 
 // dispatchEvaluationError sends an error response for an evaluation request
 // using the browser the request arrived on.
-func dispatchEvaluationError(logger zerolog.Logger, cefB *C.cef_browser_t, id uuid.UUID, message string) {
+func dispatchEvaluationError(logger *slog.Logger, cefB *C.cef_browser_t, id uuid.UUID, message string) {
 	response := javaScriptEvaluationResponse{
 		Id:        id,
 		Exception: &ExceptionError{Message: message},
 	}
 	if success, err := response.DispatchWith(cefBrowser{cefB}, PidBrowser); err != nil || !success {
-		logger.Warn().Msg("could not dispatch evaluation error response")
+		logger.Warn("could not dispatch evaluation error response")
 	}
 }

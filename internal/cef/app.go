@@ -18,7 +18,6 @@ import (
 	"reflect"
 
 	//	_ "github.com/ianlancetaylor/cgosymbolizer"
-	"github.com/rs/zerolog"
 	"io"
 	"os"
 	"sync"
@@ -166,7 +165,7 @@ func (c *cefApp) Close() error {
 	// The clients stay registered until closeInternal removes them, because
 	// the close callbacks (do_close, on_before_close) still need to resolve
 	// their client.
-	c.options.logger.Debug().Msg("closing clients")
+	c.options.logger.Debug("closing clients")
 	c.clientMutex.Lock()
 	clients := make([]*client, 0, len(c.clients))
 	for _, theClient := range c.clients {
@@ -184,7 +183,7 @@ func (c *cefApp) Close() error {
 
 	for _, theClient := range clients {
 		if closeErr := theClient.closeInternal(pump); closeErr != nil {
-			c.options.logger.Warn().Err(closeErr).Msg("failed to close client")
+			c.options.logger.Warn("failed to close client", "err", closeErr)
 		}
 	}
 
@@ -289,7 +288,7 @@ func New(opts ...Option) (CefApp, error) {
 		renderProcessHandler:  C.cRenderProcessHandlerCreate(),
 
 		options: appOptions{
-			logger:                zerolog.Nop(),
+			logger:                nopLogger(),
 			initializationTimeout: 500 * time.Millisecond,
 			pumpWorkerInterval:    defaultPumpWorkerInterval,
 		},
@@ -309,9 +308,9 @@ func New(opts ...Option) (CefApp, error) {
 		return nil, err
 	}
 
-	app.options.logger.Debug().Str("ptr", fmt.Sprintf("0x%x", unsafe.Pointer(app.ptr))).Msg("cef-app created")
-	app.options.logger.Debug().Str("ptr", fmt.Sprintf("0x%x", unsafe.Pointer(app.renderProcessHandler))).Msg("cef-render-process-handler created")
-	app.options.logger.Debug().Str("ptr", fmt.Sprintf("0x%x", unsafe.Pointer(app.browserProcessHandler))).Msg("cef-browser-process-handler created")
+	app.options.logger.Debug("cef-app created", "ptr", fmt.Sprintf("0x%x", unsafe.Pointer(app.ptr)))
+	app.options.logger.Debug("cef-render-process-handler created", "ptr", fmt.Sprintf("0x%x", unsafe.Pointer(app.renderProcessHandler)))
+	app.options.logger.Debug("cef-browser-process-handler created", "ptr", fmt.Sprintf("0x%x", unsafe.Pointer(app.browserProcessHandler)))
 
 	app.mainArgs = (*C.cef_main_args_t)(C.calloc(1, C.sizeof_cef_main_args_t))
 	app.initializeOperatingSystemSpecificMainArgs()
@@ -333,7 +332,7 @@ func (c *cefApp) Run(ctx context.Context) error {
 		C.cAppSetIgnoreCertificateErrors(C.int(1))
 	}
 
-	c.options.logger.Debug().Any("settings", c.settings).Msg("resulting settings computed")
+	c.options.logger.Debug("resulting settings computed", "settings", c.settings)
 	cSettings := C.cef_settings_t{}
 	c.settings.apply(&cSettings)
 	defer c.settings.clear(&cSettings)
@@ -348,9 +347,9 @@ func (c *cefApp) Run(ctx context.Context) error {
 		if c.settings.MultiThreadedMessageLoop {
 			return errors.New("multi-threaded Message loop enabled")
 		}
-		c.options.logger.Debug().Msg("setting external_message_pump to 1 as we have a pump-worker")
+		c.options.logger.Debug("setting external_message_pump to 1 as we have a pump-worker")
 		cSettings.external_message_pump = C.int(1)
-		c.options.logger.Debug().Msg("setting multi_threaded_message_loop to 0")
+		c.options.logger.Debug("setting multi_threaded_message_loop to 0")
 		cSettings.multi_threaded_message_loop = C.int(0)
 
 	}
@@ -362,7 +361,7 @@ func (c *cefApp) Run(ctx context.Context) error {
 	result := int(C.cef_initialize(c.mainArgs, &cSettings, c.ptr, nil))
 	if result != 1 {
 		err := errors.New("could not initialize cef-app")
-		c.options.logger.Error().Err(err).Int("result", result).Send()
+		c.options.logger.Error(err.Error(), "result", result)
 		return err
 	}
 
@@ -387,7 +386,7 @@ func (c *cefApp) Run(ctx context.Context) error {
 		pumpTick = ticker.C
 	}
 
-	c.options.logger.Trace().Msg("cef-app initializing; waiting for completion...")
+	trace(c.options.logger, "cef-app initializing; waiting for completion...")
 
 	initTimeout := time.NewTimer(c.options.initializationTimeout)
 	defer initTimeout.Stop()
@@ -395,10 +394,10 @@ wait:
 	for {
 		select {
 		case <-c.shutdownChannel:
-			c.options.logger.Warn().Msg("shutdown while waiting for init")
+			c.options.logger.Warn("shutdown while waiting for init")
 			return nil
 		case <-ctx.Done():
-			c.options.logger.Warn().Msg("context cancelled while waiting for init")
+			c.options.logger.Warn("context cancelled while waiting for init")
 			return ctx.Err()
 		case <-c.contextInitializationFinished:
 			break wait
@@ -406,12 +405,12 @@ wait:
 			c.doMessageWork()
 		case <-initTimeout.C:
 			err := errors.New("timed out while waiting for app-context")
-			c.options.logger.Error().Err(err).Send()
+			c.options.logger.Error(err.Error())
 			return err
 		}
 	}
 
-	c.options.logger.Debug().Dur("duration", time.Since(initializationStarted)).Msg("cef-app initialized")
+	c.options.logger.Debug("cef-app initialized", "duration", time.Since(initializationStarted))
 
 	// A custom scheme is announced in every process (see
 	// goOnRegisterCustomSchemes), but only the browser process can serve it -
@@ -423,12 +422,12 @@ wait:
 			c.registerSchemeHandlerFactories(globalContext)
 			releaseBase(unsafe.Pointer(globalContext))
 		} else {
-			c.options.logger.Error().Msg("no global request context - custom schemes stay unserved")
+			c.options.logger.Error("no global request context - custom schemes stay unserved")
 		}
 	}
 
 	if c.settings.RemoteDebuggingPort != nil {
-		c.options.logger.Debug().Msgf("Remote-Debugging-Port at: ws://localhost:%d", *c.settings.RemoteDebuggingPort)
+		c.options.logger.Debug(fmt.Sprintf("Remote-Debugging-Port at: ws://localhost:%d", *c.settings.RemoteDebuggingPort))
 	}
 
 	return nil
@@ -447,7 +446,7 @@ func (c *cefApp) verifyLoadedLibraryVersion() error {
 	C.cAppRuntimeCefVersion(&buf[0], C.size_t(len(buf)))
 	err := fmt.Errorf("cef version mismatch: loaded libcef reports %s, binary was built against %s",
 		C.GoString(&buf[0]), C.GoString(C.cAppCompiledCefVersion()))
-	c.options.logger.Error().Err(err).Send()
+	c.options.logger.Error(err.Error())
 	return err
 }
 
@@ -459,7 +458,7 @@ func (c *cefApp) verifyLoadedLibraryVersion() error {
 // cef_execute_process on BOTH the browser and the helper process path.
 func (c *cefApp) verifyAndConfigureLibrary() error {
 	if err := libcefRuntimeReady(); err != nil {
-		c.options.logger.Error().Err(err).Send()
+		c.options.logger.Error(err.Error())
 		return err
 	}
 	if err := c.verifyLoadedLibraryVersion(); err != nil {
@@ -470,13 +469,13 @@ func (c *cefApp) verifyAndConfigureLibrary() error {
 	actualHashPtr := C.cAppConfigureApiVersion()
 	if actualHashPtr == nil {
 		err := errors.New("cef api hash: libcef returned no hash for the configured api version")
-		c.options.logger.Error().Str("expected", expectedHash).Err(err).Send()
+		c.options.logger.Error(err.Error(), "expected", expectedHash)
 		return err
 	}
 	actualHash := C.GoString(actualHashPtr)
 	if expectedHash != actualHash {
 		err := errors.New("cef api hash mismatch: libcef.dll does not match the headers this binary was built against")
-		c.options.logger.Error().Str("expected", expectedHash).Str("actual", actualHash).Err(err).Send()
+		c.options.logger.Error(err.Error(), "expected", expectedHash, "actual", actualHash)
 		return err
 	}
 	return nil
@@ -542,7 +541,7 @@ func (c *cefApp) releaseHeldRefs() {
 		releaseBase(h.ptr)
 	}
 	if len(held) > 0 {
-		c.options.logger.Debug().Int("count", len(held)).Msg("released references of unfinished goroutines")
+		c.options.logger.Debug("released references of unfinished goroutines", "count", len(held))
 	}
 }
 
@@ -580,21 +579,21 @@ func (c *cefApp) doMessageWork() {
 }
 
 func (c *cefApp) executeProcess() {
-	c.options.logger.Trace().Msg("executing cef-process...")
+	trace(c.options.logger, "executing cef-process...")
 
 	// cef_execute_process consumes a reference on the app struct.
 	addRefBase(unsafe.Pointer(c.ptr))
 	exitCode := int(C.cef_execute_process(c.mainArgs, c.ptr, nil))
 	if exitCode == -1 {
-		c.options.logger.Debug().Msg("cef-execute-process returned with -1 for the main browser process")
+		c.options.logger.Debug("cef-execute-process returned with -1 for the main browser process")
 		return
 	}
-	c.options.logger.Error().Int("exit-code", exitCode).Msg("cef-execute-process returned")
+	c.options.logger.Error("cef-execute-process returned", "exit-code", exitCode)
 	os.Exit(exitCode)
 }
 
 func (c *cefApp) onWebKitInitialized() {
-	c.options.logger.Debug().Msg("web-kit initialized")
+	c.options.logger.Debug("web-kit initialized")
 }
 
 func (c *cefApp) v8ContextCreated(c2 cefBrowser, frame cefFrame) {

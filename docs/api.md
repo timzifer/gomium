@@ -77,7 +77,7 @@ running (e.g. the terminal app), `cef_initialize` of the second one fails with
 |---|---|
 | `WithCachePath(dir)` | Profile/cache directory. **Mandatory in real apps** (singleton! Cookies + localStorage persist only with it) |
 | `WithRootCachePath(dir)` | parent directory of all cache paths incl. RequestContexts; default = CachePath |
-| `WithLogger(zerolog.Logger)` / `WithLogSeverity(sev)` | logging |
+| `WithLogger(*slog.Logger)` / `WithLogSeverity(sev)` | gomium's logging (`nil` = off; `LevelTrace` below Debug) / CEF's own log |
 | `WithRemoteDebuggingPort(port)` | DevTools: point Chrome at `localhost:port` |
 | `WithUserAgent(ua)` | global user agent |
 | `WithIgnoreCertificateErrors(bool)` | ignore certificate errors globally (footgun — prefer the client option `WithCertificateErrorsAcceptedFor`) |

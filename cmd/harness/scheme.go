@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/rs/zerolog"
 	"github.com/timzifer/gomium"
+	"log/slog"
 )
 
 // GOMIUM_SCHEME_TEST=1 exercises WithCustomScheme end to end: the page, its
@@ -108,7 +108,7 @@ const schemeTestStyle = `h1 { color: rgb(0, 128, 0); }`
 // schemeTestHandler answers every request of the custom scheme and lets
 // everything else pass.
 type schemeTestHandler struct {
-	logger zerolog.Logger
+	logger *slog.Logger
 }
 
 func (schemeTestHandler) OnProtocolExecution(_ gomium.Browser, _ *url.URL) bool { return false }
@@ -121,7 +121,7 @@ func (h schemeTestHandler) InterceptResource(_ gomium.Browser, requestUrl *url.U
 	if requestUrl.Scheme != schemeTestName {
 		return nil
 	}
-	h.logger.Info().Str("uri", requestUrl.String()).Str("method", method).Msg("scheme-test: serving")
+	h.logger.Info("scheme-test: serving", "uri", requestUrl.String(), "method", method)
 
 	var content *gomium.ResourceContent
 	switch strings.TrimPrefix(requestUrl.Path, "/") {
@@ -136,7 +136,7 @@ func (h schemeTestHandler) InterceptResource(_ gomium.Browser, requestUrl *url.U
 			MimeType: "text/css; charset=utf-8",
 		}
 	default:
-		h.logger.Warn().Str("uri", requestUrl.String()).Msg("scheme-test: nothing behind this path")
+		h.logger.Warn("scheme-test: nothing behind this path", "uri", requestUrl.String())
 		return nil
 	}
 

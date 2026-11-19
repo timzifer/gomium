@@ -2,15 +2,14 @@ package cef
 
 import (
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"time"
-
-	"github.com/rs/zerolog"
 )
 
 type (
 	appOptions struct {
-		logger                zerolog.Logger
+		logger                *slog.Logger
 		pumpWorker            WorkerCallback
 		initializationTimeout time.Duration
 		moduleHandle          uintptr
@@ -52,9 +51,11 @@ func WithMessagePumpWorker(pumpWorker WorkerCallback) Option {
 	}
 }
 
-func WithLogger(logger zerolog.Logger) Option {
+// WithLogger sets the logger of the app and its clients. nil switches
+// logging off, which is also the default.
+func WithLogger(logger *slog.Logger) Option {
 	return func(c *cefApp) {
-		c.options.logger = logger
+		c.options.logger = orNop(logger)
 	}
 }
 

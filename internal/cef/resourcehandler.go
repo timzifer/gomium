@@ -116,7 +116,7 @@ func runResourceContentFn(fn ResourceContentFn) (content *ResourceContent) {
 	defer func() {
 		if r := recover(); r != nil {
 			if app := getInstance(); app != nil {
-				app.options.logger.Warn().Any("panic", r).Msg("resource content function panicked")
+				app.options.logger.Warn("resource content function panicked", "panic", r)
 			}
 			content = nil
 		}

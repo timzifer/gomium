@@ -46,7 +46,7 @@ func WithMultiThreadedMessageLoop(state bool) Option {
 
 func (c *cefApp) initializeOperatingSystemSpecificMainArgs() {
 	C.cAppSetMainArgsInstance(c.mainArgs, C.uintptr_t(c.options.moduleHandle))
-	c.options.logger.Trace().Msg("operating-system specific main args initialized")
+	trace(c.options.logger, "operating-system specific main args initialized")
 }
 
 func (c *cefApp) freeOperatingSystemSpecificMainArgs() {
