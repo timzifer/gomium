@@ -26,6 +26,9 @@ fetched — they are listed for the record of what changed when.
   standard archive) instead of the release one. A nightly workflow runs the harness
   scenarios against it, where CEF's DCHECKs catch over-releases and wrapper objects
   still alive at `cef_shutdown` - the CEF-side counterpart of the refdebug ledger.
+- CEF review workflow: an agent review of pull requests touching `internal/cef`, with
+  the prompt of the unsafe audit (`.github/claude-review/cef-audit.md`). Optional and
+  advisory; it runs once `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` is set.
 - `WithV8Listener`: registers a V8 context listener in both processes. Before, a host
   could not reach the render process at all — `AddV8Listener` on the browser-process
   app never fires, since V8 contexts exist only in the renderer.
