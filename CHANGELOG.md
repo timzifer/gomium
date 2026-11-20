@@ -21,6 +21,14 @@ fetched — they are listed for the record of what changed when.
   shutdown ended in Chromium's teardown watchdog (exit 2). `cmd/harness` and both
   examples turn it on. It leaves the profile on disk unprotected — see `docs/osx.md`.
 
+### Fixed
+
+- macOS: every helper process (GPU, utility, renderer) showed up in the Dock.
+  `InstallMacApplication`, which runs in the helpers too, forced the regular activation
+  policy over their `LSUIElement`. The policy is now left alone there;
+  `ActivateMacApplication` promotes a process only when AppKit started it without a Dock
+  entry (a binary outside a bundle).
+
 ## [0.7.0] - 2026-11-20
 
 ### Added

@@ -41,8 +41,12 @@ Linux/amd64 runs the same offscreen scenarios in CI (`refdebug (linux)`, Ubuntu 
 `xvfb-run`): bindings and their guard, custom schemes, popups, cookies, DevTools, both
 render handlers.
 
-Not verified yet: the focus and frame handlers, macOS against 156.0.27, and Linux on
-arm64 or on a desktop session.
+macOS/arm64 runs the same offscreen scenarios clean under the `refdebug` ledger, by hand
+out of a `cefbundle` bundle (no macOS runner in CI), and `examples/osr` and
+`examples/window` render, take input and shut down.
+
+Not verified yet: the focus and frame handlers, macOS on x86-64, and Linux on arm64 or
+on a desktop session.
 
 > **Status: pre-release (`v0.x`).** The API is not stable yet — expect breaking changes
 > between minor versions; [`CHANGELOG.md`](CHANGELOG.md) lists them per release. Releases
