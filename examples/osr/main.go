@@ -5,6 +5,13 @@
 //	go run github.com/timzifer/gomium/tools/cefdl -dest ./Release   # once
 //	go run ./examples/osr -url https://example.org -out frame.png
 //
+// On macOS CEF starts only out of an application bundle; -agent keeps the
+// offscreen host out of the Dock:
+//
+//	go build -o build/osr ./examples/osr
+//	go run ./tools/cefbundle -bin build/osr -cef Release -out build/OSR.app -agent
+//	build/OSR.app/Contents/MacOS/OSR -url https://example.org -out frame.png
+//
 // Everything a real host needs is here and nothing else: runtime binding,
 // the helper-process branch, the external message pump driven from the main
 // thread, and an orderly shutdown.

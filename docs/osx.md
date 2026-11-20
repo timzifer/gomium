@@ -196,8 +196,15 @@ go run ./tools/cefbundle -bin build/myapp -cef Release \
     -out build/MyApp.app -name MyApp -id com.example.myapp
 ```
 
-Flags: `-version`, `-min-os` (default `11.0`) and `-sign` (default `-`, ad-hoc; empty
-skips signing).
+Flags: `-version`, `-min-os` (default `11.0`), `-sign` (default `-`, ad-hoc; empty
+skips signing) and `-agent`.
+
+`-agent` marks the application itself `LSUIElement`, as the helpers always are: no Dock
+icon, no menu bar, no entry in the app switcher. That is what an offscreen host wants -
+`cmd/harness`, a screenshot service - which otherwise flashes a Dock icon on every run.
+A windowed host leaves it off. An agent can still open windows - `ActivateMacApplication`
+leaves its policy alone, it only promotes a process AppKit started without any - but
+they come without a Dock icon or a visible menu bar.
 
 `cefbundle` also copies the license notices `cefdl` put into the `-cef` directory
 (`CEF_LICENSE.txt`, `CREDITS.html`) into `Contents/Resources/`. Shipping them is a
