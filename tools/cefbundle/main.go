@@ -29,6 +29,10 @@
 //	go build -o build/myapp ./cmd/myapp
 //	go run ./tools/cefbundle -bin build/myapp -cef Release -out build/MyApp.app
 //
+// -agent marks the application itself LSUIElement, as the helpers always are:
+// no Dock icon and no menu bar. That suits an offscreen host, which has
+// nothing to show; a windowed host should leave it off.
+//
 // Re-running rebuilds the bundle from scratch, so it is safe to chain behind
 // a build.
 package main
@@ -75,16 +79,17 @@ func main() {
 		versionFlag = flag.String("version", "0.0.0", "CFBundleShortVersionString / CFBundleVersion")
 		minOSFlag   = flag.String("min-os", "11.0", "LSMinimumSystemVersion")
 		signFlag    = flag.String("sign", "-", "codesign identity, \"-\" for ad-hoc, empty to skip signing")
+		agentFlag   = flag.Bool("agent", false, "mark the application itself LSUIElement: no Dock icon and no menu bar, for offscreen hosts")
 	)
 	flag.Parse()
 
-	if err := run(*binFlag, *cefFlag, *outFlag, *nameFlag, *idFlag, *versionFlag, *minOSFlag, *signFlag); err != nil {
+	if err := run(*binFlag, *cefFlag, *outFlag, *nameFlag, *idFlag, *versionFlag, *minOSFlag, *signFlag, *agentFlag); err != nil {
 		fmt.Fprintln(os.Stderr, "cefbundle:", err)
 		os.Exit(1)
 	}
 }
 
-func run(bin, cef, out, name, id, version, minOS, sign string) error {
+func run(bin, cef, out, name, id, version, minOS, sign string, agent bool) error {
 	if bin == "" {
 		return fmt.Errorf("-bin is required")
 	}
@@ -141,6 +146,9 @@ func run(bin, cef, out, name, id, version, minOS, sign string) error {
 		Name:       name,
 		Version:    version,
 		MinOS:      minOS,
+		// -agent: an offscreen host shows nothing, so it gets no Dock icon
+		// either. The helpers below are always agents.
+		Background: agent,
 	}); err != nil {
 		return err
 	}

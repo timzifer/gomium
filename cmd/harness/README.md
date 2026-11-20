@@ -13,6 +13,15 @@ go build -o build/harness.exe ./cmd/harness
 GOMIUM_BINDING_TEST=1 GOMIUM_RUN_SECONDS=15 ./build/harness.exe
 ```
 
+On macOS CEF starts only out of an application bundle. `-agent` keeps the offscreen
+runs out of the Dock; bundle without it for `GOMIUM_WINDOW_TEST`:
+
+```sh
+go build -o build/harness ./cmd/harness
+go run ./tools/cefbundle -bin build/harness -cef Release -out build/Harness.app -agent
+GOMIUM_BINDING_TEST=1 GOMIUM_RUN_SECONDS=15 build/Harness.app/Contents/MacOS/Harness
+```
+
 Building with `-race` and running the scenarios below is the race-detector check; a `GORACE="log_path=build/race"` keeps one report file per process (helpers
 included).
 
