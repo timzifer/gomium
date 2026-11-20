@@ -143,6 +143,20 @@ static void CEF_CALLBACK on_before_command_line_processing_trampoline(struct _ce
     // and meaningless in an embedded webview - keep it off.
     merge_disable_feature(command_line, "ImmersiveReadAnything");
 
+#if defined(__APPLE__)
+    // Chrome hooks into the macOS notification system at startup: the
+    // browser process and the "Helper (Alerts)" process both connect to
+    // usernoted, which asks the user to allow notifications from the app -
+    // once per bundle identifier, so every new host and every rebuilt test
+    // bundle raises its own "Notifications from <App>" prompt. gomium routes
+    // no web notifications to the host and Alloy-style browsers do not show
+    // them, so the connection buys nothing. Either feature alone stops it
+    // (checked against usernoted's log on CEF 156); both are off so a later
+    // Chromium that drops one of them still does.
+    merge_disable_feature(command_line, "NativeNotifications");
+    merge_disable_feature(command_line, "SystemNotifications");
+#endif
+
     // Without this switch Chrome's own login prompt answers HTTP auth
     // challenges of Alloy-style browsers, and the client's GetAuthCredentials
     // is never called (CEF 8078 libcef/browser/chrome/
