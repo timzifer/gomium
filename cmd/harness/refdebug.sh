@@ -2,7 +2,8 @@
 # Runs harness scenarios against a -tags refdebug build and fails when one of
 # them exits non-zero, panics, or reports a refdebug finding (a reference
 # operation on a freed struct, or structs that outlived CEF) - or never got a
-# browser up, which would check nothing.
+# browser up, never finished loading a page, or is missing the log lines that
+# show its feature worked. A run without them checks nothing (#41).
 #
 #   go build -tags refdebug -o build/harness-refdebug.exe ./cmd/harness
 #   cmd/harness/refdebug.sh build/harness-refdebug.exe [scenario ...]
@@ -30,9 +31,38 @@ cef_log=${CEF_DEBUG_LOG:-$(dirname "$harness")/debug.log}
 mkdir -p "$logs" shots
 findings_re='refdebug:|^panic:|fatal error:|:FATAL:|Check failed|WARNING: DATA RACE'
 
+# expected_markers prints, one per line, the fixed strings a scenario part
+# must have logged: results, not actions - "the page answered", not "we
+# clicked". Every part also needs a finished page load (checked below).
+expected_markers() {
+	case "$1" in
+	FRAME) echo 'frame painted' ;;
+	BINDING)
+		echo 'BINDING_MAIN_RESULT pong'
+		echo 'BINDING_ADD 5'
+		echo 'BINDING_FAIL Error: boom'
+		echo 'BINDING_FRAME_ERR'
+		;;
+	BINDING_POPUP) echo 'BINDING_POPUP_RESULT pong' ;;
+	V8_LISTENER) echo 'V8_LISTENER_INJECTED main=true' ;;
+	POPUP | NAV) echo 'url=https://example.com/' ;;
+	COOKIE) echo 'cookie-test: delete ok' ;;
+	CONTEXT) echo 'context-test: browser in context A created' ;;
+	DIALOG)
+		echo 'dialog-test: page-side answers'
+		echo 'menu-test: context menu intercepted'
+		;;
+	DOWNLOAD) echo 'complete=true' ;;
+	SCHEME) echo 'heading color is rgb(0, 128, 0) (want rgb(0, 128, 0))' ;;
+	HANDLER) echo 'handler-test: main frame changed' ;;
+	DEVTOOLS) echo 'devtools: evaluate' ;;
+	esac
+}
+
 status=0
 for scenario in "$@"; do
 	vars=(GOMIUM_RUN_SECONDS="$seconds")
+	parts=()
 	if [ "$scenario" != OSR ]; then
 		IFS=+ read -ra parts <<<"$scenario"
 		for part in "${parts[@]}"; do
@@ -65,10 +95,22 @@ for scenario in "$@"; do
 		cat "$cef_log" >>"$log"
 	fi
 	findings=$(grep -a -c -E "$findings_re" "$log")
-	# a run that never got a browser checks nothing
+	# a run that never got a browser, or never finished a page, checks nothing
 	browsers=$(grep -a -c 'browser received' "$log")
-	if [ "$code" -ne 0 ] || [ "$findings" -ne 0 ] || [ "$browsers" -eq 0 ]; then
-		echo "FAIL $scenario (exit $code, $findings findings, $browsers browsers) - $log"
+	loaded=$(grep -a -c 'loading=false' "$log")
+	missing=()
+	for part in ${parts[@]+"${parts[@]}"}; do
+		while IFS= read -r marker; do
+			[ -n "$marker" ] || continue
+			grep -a -F -q -- "$marker" "$log" || missing+=("$marker")
+		done <<<"$(expected_markers "$part")"
+	done
+	if [ "$code" -ne 0 ] || [ "$findings" -ne 0 ] || [ "$browsers" -eq 0 ] ||
+		[ "$loaded" -eq 0 ] || [ ${#missing[@]} -ne 0 ]; then
+		echo "FAIL $scenario (exit $code, $findings findings, $browsers browsers, $loaded pages loaded) - $log"
+		for marker in ${missing[@]+"${missing[@]}"}; do
+			echo "     missing: $marker"
+		done
 		grep -a -E -A40 "$findings_re" "$log" | head -80
 		status=1
 	else

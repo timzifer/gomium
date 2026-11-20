@@ -16,6 +16,8 @@ fetched — they are listed for the record of what changed when.
 
 - `cefbundle -agent`: marks the application itself `LSUIElement`, so an offscreen host
   (`cmd/harness`, `examples/osr`) gets no Dock icon (#43).
+- CI job `refdebug (macos)`: the offscreen harness scenarios on `macos-latest` (arm64), out of
+  a `cefbundle -agent` bundle, on every pull request (#40).
 - `WithMockKeychain(bool)` (macOS): Chromium encrypts cookies and stored credentials with
   a fixed key instead of the "Chromium Safe Storage" keychain item. An ad-hoc signed
   bundle is a new code identity on every build, and each one raised a keychain prompt
@@ -25,6 +27,11 @@ fetched — they are listed for the record of what changed when.
 
 ### Fixed
 
+- macOS: every gomium host asked the user to allow notifications, once per bundle
+  identifier - so every rebuilt test bundle again. Chrome connects the browser process
+  and the "Helper (Alerts)" process to the notification system at startup; gomium routes
+  no web notifications to the host, so the `NativeNotifications` and
+  `SystemNotifications` features are now off on macOS.
 - macOS: every helper process (GPU, utility, renderer) showed up in the Dock.
   `InstallMacApplication`, which runs in the helpers too, forced the regular activation
   policy over their `LSUIElement`. The policy is now left alone there;

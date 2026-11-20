@@ -63,7 +63,8 @@ Built with `-tags refdebug`, gomium checks the reference counts of every struct 
 allocates: a reference operation on a freed struct panics with the stack that freed it,
 and `Close` fails with the allocation stack of each struct still alive after
 `cef_shutdown` - the harness then exits with code 3. `refdebug.sh` runs the offscreen
-scenarios against such a build and fails on any finding; CI does the same on Windows.
+scenarios against such a build and fails on any finding; CI does the same on Windows, Linux
+and macOS (there out of a `tools/cefbundle` bundle, since CEF starts only from one).
 
 ```sh
 go build -tags refdebug -o build/harness-refdebug.exe ./cmd/harness
