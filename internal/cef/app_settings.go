@@ -36,6 +36,10 @@ type (
 		RemoteDebuggingPort      *int
 		IgnoreCertificateErrors  bool
 		MultiThreadedMessageLoop bool
+		// UseMockKeychain is macOS-only: Chromium's OSCrypt uses a fixed
+		// key instead of "Chromium Safe Storage" in the keychain. Applied as
+		// a command-line switch, in every process.
+		UseMockKeychain bool
 
 		///
 		// Value that will be returned as the User-Agent HTTP header. If empty the

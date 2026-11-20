@@ -56,6 +56,8 @@ func ExecuteSubprocess(opts ...Option) error {
 		return err
 	}
 
+	c.applyProcessSwitches()
+
 	// cef_execute_process consumes a reference on the app struct. For a
 	// helper process it runs the process main loop and only returns when
 	// the helper is done.

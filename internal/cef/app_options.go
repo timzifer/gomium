@@ -71,6 +71,12 @@ func WithIgnoreCertificateErrors(ignore bool) Option {
 	}
 }
 
+func WithMockKeychain(use bool) Option {
+	return func(c *cefApp) {
+		c.settings.UseMockKeychain = use
+	}
+}
+
 func WithInitializationTimeout(duration time.Duration) Option {
 	return func(c *cefApp) {
 		c.options.initializationTimeout = duration

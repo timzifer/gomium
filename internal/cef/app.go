@@ -331,6 +331,7 @@ func (c *cefApp) Run(ctx context.Context) error {
 	if c.settings.IgnoreCertificateErrors {
 		C.cAppSetIgnoreCertificateErrors(C.int(1))
 	}
+	c.applyProcessSwitches()
 
 	c.options.logger.Debug("resulting settings computed", "settings", c.settings)
 	cSettings := C.cef_settings_t{}
@@ -575,6 +576,15 @@ func (c *cefApp) doMessageWork() {
 
 	if c.pumpReentered.Swap(false) || more {
 		c.scheduleWork(0)
+	}
+}
+
+// applyProcessSwitches hands the settings that every process must see - not
+// only the browser process - to on_before_command_line_processing. Run and
+// ExecuteSubprocess both call it before cef_execute_process.
+func (c *cefApp) applyProcessSwitches() {
+	if c.settings.UseMockKeychain {
+		C.cAppSetUseMockKeychain(C.int(1))
 	}
 }
 

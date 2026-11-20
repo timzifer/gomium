@@ -16,7 +16,10 @@ const MacFrameworkName = cef.MacFrameworkName
 // ActivateMacApplication brings the process to the front. Call it from the
 // browser process on the main thread when the application shows a window: a
 // binary started from a terminal is not the active application, so its first
-// window comes up behind the terminal and never becomes key.
+// window comes up behind the terminal and never becomes key. A process that
+// AppKit started without a Dock entry (a binary outside an .app bundle) is
+// promoted to a regular application first; a bundle declaring LSUIElement
+// keeps its policy.
 //
 // Do not call it for an offscreen-only host - there is no window to show, and
 // pulling focus away from whatever the user is doing is the whole cost with

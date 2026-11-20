@@ -27,6 +27,12 @@ void cAppSetIgnoreCertificateErrors(int ignore) {
     g_ignore_certificate_errors = ignore;
 }
 
+static int g_use_mock_keychain = 0;
+
+void cAppSetUseMockKeychain(int use) {
+    g_use_mock_keychain = use;
+}
+
 const char* cAppExpectedApiHash() {
     return CEF_API_HASH_PLATFORM;
 }
@@ -147,6 +153,19 @@ static void CEF_CALLBACK on_before_command_line_processing_trampoline(struct _ce
     if (g_ignore_certificate_errors) {
         append_switch(command_line, "ignore-certificate-errors");
     }
+
+#if defined(__APPLE__)
+    // Chromium's OSCrypt keeps the key that encrypts cookies and stored
+    // credentials in the macOS keychain ("Chromium Safe Storage"). Every
+    // process that touches the cookie store asks for it, and the keychain
+    // prompts once per code identity - with an ad-hoc signed bundle that is
+    // once per build, from several processes at once, and the network
+    // service blocks until somebody answers. The mock keychain uses a fixed
+    // key instead: no prompt, but no protection of the profile at rest.
+    if (g_use_mock_keychain) {
+        append_switch(command_line, "use-mock-keychain");
+    }
+#endif
 
 #if defined(__linux__)
     // The zygote is this Go executable, and the Go runtime always runs

@@ -56,10 +56,11 @@ int cAppInstallMacApplication(void) {
       return [NSApp conformsToProtocol:@protocol(CefAppProtocol)] ? 1 : 0;
     }
     [GomiumApplication sharedApplication];
-    // Without a regular activation policy a binary started outside an .app
-    // bundle gets no dock entry and no key window - its browser window would
-    // come up behind everything else and never take focus.
-    [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+    // The activation policy is left alone: this runs in every helper process
+    // too, and their Info.plist (LSUIElement) is what keeps renderer, GPU and
+    // utility processes out of the Dock. A regular policy here gave each of
+    // them a Dock entry. Promoting a bare binary is cAppActivateMacApplication's
+    // job, which only a windowed browser process calls.
     return 1;
   }
 }
@@ -97,6 +98,13 @@ void cAppActivateMacApplication(void) {
   @autoreleasepool {
     if (NSApp == nil) {
       return;
+    }
+    // A binary started outside an .app bundle runs with the prohibited
+    // policy: no Dock entry, no key window, so its browser window would come
+    // up behind everything and never take focus. Only that case is promoted -
+    // a bundle that declares itself an agent (LSUIElement) keeps its choice.
+    if ([NSApp activationPolicy] == NSApplicationActivationPolicyProhibited) {
+      [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
     }
     [NSApp activateIgnoringOtherApps:YES];
   }

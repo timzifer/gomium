@@ -283,6 +283,16 @@ func WithFindHandlerFunc(fn func(instance Browser, result FindResult)) ClientOpt
 
 func WithIgnoreCertificateErrors(ignore bool) Option { return cef.WithIgnoreCertificateErrors(ignore) }
 
+// WithMockKeychain (macOS only, ignored elsewhere) makes Chromium encrypt
+// cookies and stored credentials with a fixed key instead of the one it keeps
+// in the keychain as "Chromium Safe Storage". Without it every new code
+// identity - with ad-hoc signing (tools/cefbundle), every build - raises a
+// keychain prompt per process, and page loads stall until it is answered.
+// The fixed key means the profile on disk is not protected: meant for
+// development, tests and hosts that keep nothing sensitive in the profile.
+// Pass it to both New and ExecuteSubprocess.
+func WithMockKeychain(use bool) Option { return cef.WithMockKeychain(use) }
+
 func WithInitialUrl(url string) BrowserOption { return cef.WithInitialUrl(url) }
 
 func WithInitializationTimeout(duration time.Duration) Option {
