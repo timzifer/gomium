@@ -106,10 +106,10 @@ that corrupts memory. The client API is pinned to `CEF_API_VERSION=15600`
   CEF 8078 branch). The switch is process-wide, so a missing handler now cancels the request
   instead of showing a dialog. Verified on CEF 156.0.27 with the Fyne auth dialog.
 - **Single-process mode is gone.** gomium kept `WithSingleProcess` as a no-op through
-  0.6.0, then dropped it. V8 code runs in the render subprocess, which is the same Go
+  0.6.0 and dropped it in 0.7.0. V8 code runs in the render subprocess, which is the same Go
   executable re-executed through the `cef_execute_process` path.
 - **`load_string` was removed.** `CefFrame.LoadString` now builds a base64 `data:` URL;
   the origin parameter is ignored.
 - **Frame identifiers are strings** (CEF 122), not `int64`. This reaches the public API:
   `CefFrame.Identifier() string`, `GetFrameByIdentifier(string)`. Process messages (internal
-  after 0.6.0) run over frames; the browser-level variant routes through the main frame.
+  since 0.7.0) run over frames; the browser-level variant routes through the main frame.

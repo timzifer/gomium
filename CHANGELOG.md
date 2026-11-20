@@ -12,6 +12,8 @@ fetched — they are listed for the record of what changed when.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-20
+
 ### Added
 
 - `NewFrameRenderHandler`: an OSR render handler that paints into one surface it owns
@@ -292,6 +294,7 @@ First tagged release.
   (`FetchRuntime`, package `cefdl`, `tools/cefdl`).
 - CI on Ubuntu, Windows and macOS.
 
-[Unreleased]: https://github.com/timzifer/gomium/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/timzifer/gomium/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/timzifer/gomium/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/timzifer/gomium/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/timzifer/gomium/releases/tag/v0.5.0
