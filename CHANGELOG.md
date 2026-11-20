@@ -25,6 +25,11 @@ fetched — they are listed for the record of what changed when.
 
 ### Fixed
 
+- macOS: every gomium host asked the user to allow notifications, once per bundle
+  identifier - so every rebuilt test bundle again. Chrome connects the browser process
+  and the "Helper (Alerts)" process to the notification system at startup; gomium routes
+  no web notifications to the host, so the `NativeNotifications` and
+  `SystemNotifications` features are now off on macOS.
 - macOS: every helper process (GPU, utility, renderer) showed up in the Dock.
   `InstallMacApplication`, which runs in the helpers too, forced the regular activation
   policy over their `LSUIElement`. The policy is now left alone there;
