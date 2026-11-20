@@ -41,9 +41,9 @@ Linux/amd64 runs the same offscreen scenarios in CI (`refdebug (linux)`, Ubuntu 
 `xvfb-run`): bindings and their guard, custom schemes, popups, cookies, DevTools, both
 render handlers.
 
-macOS/arm64 runs the same offscreen scenarios clean under the `refdebug` ledger, by hand
-out of a `cefbundle` bundle (no macOS runner in CI), and `examples/osr` and
-`examples/window` render, take input and shut down.
+macOS/arm64 runs the same offscreen scenarios in CI (`refdebug (macos)`, out of a
+`cefbundle` bundle); `examples/osr` and `examples/window` render, take input and shut
+down (by hand).
 
 Not verified yet: the focus and frame handlers, macOS on x86-64, and Linux on arm64 or
 on a desktop session.
@@ -319,7 +319,7 @@ CEF's debug runtime nightly.
 | windows/arm64 | trampolines are ELF/Mach-O only — PE-COFF arm64 stops at an `#error` | no |
 | linux/amd64 | yes | offscreen only — the harness scenarios run in CI |
 | linux/arm64 | yes | same code path as amd64, not run yet |
-| darwin/arm64 | yes | yes — offscreen and windowed, out of a bundle built by `tools/cefbundle` |
+| darwin/arm64 | yes | yes — offscreen and windowed, out of a bundle built by `tools/cefbundle`; the harness scenarios run in CI |
 | darwin/amd64 | yes | same code path as arm64, but only arm64 has been run |
 
 Linux is offscreen-only. It runs without Chromium's zygote (`--no-zygote`): the zygote
@@ -346,9 +346,9 @@ Linux is offscreen-only and runs without a zygote.
 
 - **Tests.** Unit tests cover the shim, the facade, the version pin, binding argument
   and result conversion, the process-message payloads, DevTools and the OSR render
-  handlers. CEF itself runs in CI in the `refdebug (windows)` and `refdebug (linux)`
-  jobs (offscreen scenarios) and the nightly debug-runtime run — windowed browsers and
-  macOS need `cmd/harness` by hand.
+  handlers. CEF itself runs in CI in the `refdebug (windows)`, `refdebug (linux)` and
+  `refdebug (macos)` jobs (offscreen scenarios) and the nightly debug-runtime run —
+  windowed browsers need `cmd/harness` by hand.
 - **Race detector.** Unit tests run with `-race` on every pull request (Linux); the
   harness scenarios run as a `-race` build nightly (`race.yml`, Linux only).
 - **Linux** is verified offscreen on amd64 in CI only, not on a desktop session or arm64.

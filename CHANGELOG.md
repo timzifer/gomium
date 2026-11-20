@@ -14,6 +14,8 @@ fetched — they are listed for the record of what changed when.
 
 ### Added
 
+- CI job `refdebug (macos)`: the offscreen harness scenarios on `macos-latest` (arm64), out of
+  a `cefbundle` bundle, on every pull request (#40).
 - `WithMockKeychain(bool)` (macOS): Chromium encrypts cookies and stored credentials with
   a fixed key instead of the "Chromium Safe Storage" keychain item. An ad-hoc signed
   bundle is a new code identity on every build, and each one raised a keychain prompt

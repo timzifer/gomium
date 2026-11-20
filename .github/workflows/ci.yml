@@ -221,3 +221,49 @@ jobs:
         with:
           name: refdebug-linux-logs
           path: build/refdebug/
+
+  refdebug-macos:
+    # The same scenarios on macOS/arm64. CEF starts only out of an .app bundle
+    # with helper bundles there, so the harness goes through tools/cefbundle
+    # first (ad-hoc signed). The harness passes WithMockKeychain: a freshly
+    # signed bundle would otherwise wait on a "Chromium Safe Storage" keychain
+    # prompt nobody answers, and no page would ever load. The runner's login
+    # session gives AppKit the desktop it needs; everything stays offscreen.
+    name: refdebug (macos)
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Cache CEF distribution
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/gomium-cef
+          key: cef-macosarm64-${{ hashFiles('cefdl/cef.version') }}
+
+      - name: Fetch CEF runtime
+        run: go run ./tools/cefdl -cache "${{ runner.temp }}/gomium-cef"
+
+      - name: Ledger unit test
+        run: go test -tags refdebug -run TestRefLedger ./internal/cef
+
+      - name: Build and bundle refdebug harness
+        run: |
+          go build -tags refdebug -o build/harness-refdebug ./cmd/harness
+          go run ./tools/cefbundle -bin build/harness-refdebug -cef Release \
+            -out build/Harness.app -name Harness -id dev.gomium.harness
+
+      - name: Run scenarios
+        run: cmd/harness/refdebug.sh build/Harness.app/Contents/MacOS/Harness
+
+      - name: Upload scenario logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: refdebug-macos-logs
+          path: build/refdebug/
