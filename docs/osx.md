@@ -261,6 +261,27 @@ shapes survive the copy, but it does not convert between them.
 implementing `RunWinMain` / `RunConsoleMain` (`include/cef_sandbox_win.h`). They have
 no macOS counterpart and nothing to do with a Go executable.
 
+### The keychain ("Chromium Safe Storage")
+
+Chromium encrypts cookies and stored credentials on disk (OSCrypt) with a key it keeps
+in the login keychain as **Chromium Safe Storage**. The keychain grants access per code
+identity, and an ad-hoc signature (`cefbundle -sign -`) is a new identity on every
+build. Each rebuilt bundle therefore raises a keychain prompt, several at once, one per
+process that reaches for the key, and until somebody answers:
+
+- the network service blocks, so the first page never finishes loading,
+- `Close` reaches `on_before_close`, then Chromium's own *Teardown watchdog expired;
+  recording dump and terminating* ends the process with exit code 2.
+
+`WithMockKeychain(true)` (pass it to `New` and to `ExecuteSubprocess`) switches Chromium
+to a fixed key (`--use-mock-keychain`): no prompt, nothing blocks. The price is that the
+profile on disk is no longer protected; anyone who can read `WithCachePath` can decrypt
+its cookies. `cmd/harness` and both examples turn it on.
+
+An application that ships signed with a stable identity (Developer ID) should leave it
+off. The user then allows access once ("Always Allow"), and the grant survives updates
+as long as the designated requirement stays the same.
+
 ---
 
 ## Sandbox
@@ -288,6 +309,11 @@ specific than the return value.
 The pump is not reaching the main thread. `cef_do_message_loop_work` — and with it the
 `NSApp` drain — has to run on the `cef_initialize` thread; a pump worker that calls it
 from a goroutine leaves the AppKit queue untouched.
+
+**Keychain prompts for "Chromium Safe Storage", the first page never loads, exit code 2**
+A new ad-hoc signed build asking for the OSCrypt key, see
+[The keychain](#the-keychain-chromium-safe-storage). Use `WithMockKeychain(true)` during
+development.
 
 **The window opens behind the terminal, or ⌘C does nothing**
 `ActivateMacApplication()` and `InstallMacDefaultMenu()` were not called.

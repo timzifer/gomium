@@ -12,6 +12,15 @@ fetched — they are listed for the record of what changed when.
 
 ## [Unreleased]
 
+### Added
+
+- `WithMockKeychain(bool)` (macOS): Chromium encrypts cookies and stored credentials with
+  a fixed key instead of the "Chromium Safe Storage" keychain item. An ad-hoc signed
+  bundle is a new code identity on every build, and each one raised a keychain prompt
+  per process; until it was answered the network service blocked, page loads stalled and
+  shutdown ended in Chromium's teardown watchdog (exit 2). `cmd/harness` and both
+  examples turn it on. It leaves the profile on disk unprotected — see `docs/osx.md`.
+
 ## [0.7.0] - 2026-11-20
 
 ### Added

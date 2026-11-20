@@ -33,6 +33,10 @@ func options(logger *slog.Logger) []gomium.Option {
 		gomium.WithLogSeverity(gomium.LOGSEVERITY_VERBOSE),
 		gomium.WithCachePath(profileDir),
 		gomium.WithRemoteDebuggingPort(debugPort),
+		// macOS: every rebuilt, ad-hoc signed bundle would otherwise raise a
+		// "Chromium Safe Storage" keychain prompt per process and stall page
+		// loads until answered. Ignored on Linux.
+		gomium.WithMockKeychain(true),
 		gomium.WithMessagePumpWorker(func(delay int, worker gomium.Worker) {
 			go func() {
 				if delay > 0 {

@@ -82,6 +82,7 @@ running (e.g. the terminal app), `cef_initialize` of the second one fails with
 | `WithUserAgent(ua)` | global user agent |
 | `WithIgnoreCertificateErrors(bool)` | ignore certificate errors globally (footgun — prefer the client option `WithCertificateErrorsAcceptedFor`) |
 | `WithMessagePumpWorker(cb)` / `WithMessagePumpWorkerInterval(d)` | external message pump (Fyne main loop integration) |
+| `WithMockKeychain(bool)` | macOS: fixed OSCrypt key instead of the "Chromium Safe Storage" keychain item — no keychain prompts, but an unprotected profile (development, ad-hoc signed bundles) |
 | `WithMultiThreadedMessageLoop(bool)` | CEF's own loop thread (Windows) instead of an external pump |
 | `WithInitializationTimeout(d)` | how long `Run` waits for CEF's context to initialize (default 500 ms) |
 | `WithModuleHandle(h)` | Windows: module handle (`GetModuleHandle(nil)`) |

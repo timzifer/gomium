@@ -14,6 +14,7 @@
 struct _cef_app_t* cAppCreate();
 void cAppFree(struct _cef_app_t* app);
 void cAppSetIgnoreCertificateErrors(int ignore);
+void cAppSetUseMockKeychain(int use);
 const char* cAppExpectedApiHash();
 const char* cAppConfigureApiVersion();
 const char* cAppCompiledCefVersion();
